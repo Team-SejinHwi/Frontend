@@ -1,0 +1,51 @@
+import React, { useState } from 'react'; // [수정] useState 훅을 불러옵니다.
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import Home from './pages/Home';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+
+function App() {
+  // 🚀 [상태 관리 핵심] 로그인 상태를 여기서 관리합니다.
+  // isLoggedIn: 현재 로그인 여부 (true/false)
+  // setIsLoggedIn: 로그인 상태를 변경하는 함수
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return localStorage.getItem('isLoggedIn') === '1'; // '1'이면 true, 아니면 false
+  });
+
+  return (
+    <BrowserRouter>
+      {/* 개발 편의를 위한 상단 링크 (나중에 삭제 가능) */}
+      <ul style={{ padding: 10, backgroundColor: '#eee', margin: 0 }}>
+        <li><Link to="/">Home</Link></li>
+        <li><Link to="/login">Login</Link></li>
+        <li><Link to="/signup">Sign up</Link></li>
+        {/* [디버깅용] 현재 상태를 눈으로 확인하기 위함 */}
+        <li>현재상태: {isLoggedIn ? "로그인 됨(ON)" : "로그인 안됨(OFF)"}</li>
+      </ul>
+
+      <Routes>
+        {/* [Props 전달]
+          자식 컴포넌트에게 부모의 상태(isLoggedIn)와 
+          상태를 바꿀 수 있는 함수(setIsLoggedIn)를 물려줍니다.
+        */}
+
+        {/* Home에는 로그인 여부(isLoggedIn)와 로그아웃 기능(setIsLoggedIn)이 필요함 */}
+        <Route
+          path="/"
+          element={<Home isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />}
+        />
+
+        {/* Login에는 '성공 시 상태를 true로 바꿀' 함수(setIsLoggedIn)가 필요함 */}
+        <Route
+          path="/login"
+          element={<Login setIsLoggedIn={setIsLoggedIn} />}
+        />
+
+        {/* Signup은 회원가입 후 로그인 페이지로 보내기만 하면 되므로 당장 props 불필요 */}
+        <Route path="/signup" element={<Signup />} />
+      </Routes>
+    </BrowserRouter >
+  );
+}
+
+export default App;
