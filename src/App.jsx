@@ -15,13 +15,9 @@ function App() {
   return (
     <BrowserRouter>
       {/* 개발 편의를 위한 상단 링크 (나중에 삭제 가능) */}
-      <ul style={{ padding: 10, backgroundColor: '#eee', margin: 0 }}>
-        <li><Link to="/">Home</Link></li>
-        <li><Link to="/login">Login</Link></li>
-        <li><Link to="/signup">Sign up</Link></li>
         {/* [디버깅용] 현재 상태를 눈으로 확인하기 위함 */}
         <li>현재상태: {isLoggedIn ? "로그인 됨(ON)" : "로그인 안됨(OFF)"}</li>
-      </ul>
+     
 
       <Routes>
         {/* [Props 전달]
