@@ -7,11 +7,7 @@ import {
 } from '@mui/material';
 import LockOutlineIcon from '@mui/icons-material/LockOutline';
 
-// 🎛️ [모드 스위치] 이 변수만 변경하면 모드가 바뀝니다!
-// true  : 프론트엔드 혼자 테스트 (가짜 로그인)
-// false : 백엔드(휘님)와 연동 (실제 API 통신)
-
-const IS_MOCK_MODE = true;
+import { IS_MOCK_MODE } from '../config';
 
 export default function Login({ setIsLoggedIn }) {
   const navigate = useNavigate();
