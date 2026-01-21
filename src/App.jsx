@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import ItemDetail from './pages/ItemDetail';
+import ItemRegister from './pages/ItemRegister';
 
 function App() {
   // 🚀 [상태 관리 핵심] 로그인 상태를 여기서 관리합니다.
@@ -15,9 +17,9 @@ function App() {
   return (
     <BrowserRouter>
       {/* 개발 편의를 위한 상단 링크 (나중에 삭제 가능) */}
-        {/* [디버깅용] 현재 상태를 눈으로 확인하기 위함 */}
-        <li>현재상태: {isLoggedIn ? "로그인 됨(ON)" : "로그인 안됨(OFF)"}</li>
-     
+      {/* [디버깅용] 현재 상태를 눈으로 확인하기 위함 */}
+      <li>현재상태: {isLoggedIn ? "로그인 됨(ON)" : "로그인 안됨(OFF)"}</li>
+
 
       <Routes>
         {/* [Props 전달]
@@ -39,6 +41,17 @@ function App() {
 
         {/* Signup은 회원가입 후 로그인 페이지로 보내기만 하면 되므로 당장 props 불필요 */}
         <Route path="/signup" element={<Signup />} />
+
+        {/* 🚀  상세 페이지 라우트 설정 */}
+        {/* /items/10, /items/9 처럼 뒤에 숫자가 오면 ItemDetail을 보여줌 */}
+        <Route path="/items/:id" element={<ItemDetail />} />
+
+        {/* 상품 등록 페이지 라우트 */}
+        <Route
+          path="/products/new"
+          element={<ItemRegister isLoggedIn={isLoggedIn} />}
+        />
+
       </Routes>
     </BrowserRouter >
   );
