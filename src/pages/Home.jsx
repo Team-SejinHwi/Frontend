@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   AppBar, Toolbar, Button, Typography, Box, Container, Stack, Paper, Grid, Fab
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add'; 
+import AddIcon from '@mui/icons-material/Add';
 
 // 새로 만든 가짜 데이터와 컴포넌트 import
 import { mockItems } from '../mocks/mockData';
@@ -18,6 +18,11 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
   // 🚀 상품 리스트를 담을 상태
   const [items, setItems] = useState([]);
 
+  //  로그인한 사용자 정보 가져오기 (없으면 빈 문자열)
+  // (나중에 로그인할 때 'userName'도 같이 저장하면 더 좋음..)
+  const myEmail = localStorage.getItem('userEmail') || '';
+  const myName = localStorage.getItem('userName') || myEmail.split('@')[0] || '사용자';
+
   // 🚀 [Effect] 페이지가 켜지면 상품 데이터를 가져옵니다.
   useEffect(() => {
     if (IS_MOCK_MODE) {
@@ -28,7 +33,7 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
       fetch('/api/items', {
         headers: {
           // 👇 이 헤더가 있어야 ngrok 경고창 없이 바로 통과됩니다! (필수)
-          "ngrok-skip-browser-warning": "69420", 
+          "ngrok-skip-browser-warning": "69420",
         },
       })
         .then(res => {
@@ -61,8 +66,12 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
   }, []);
 
   const handleLogout = () => {
+    //화면 상태 끄기
     setIsLoggedIn(false);
     localStorage.removeItem('isLoggedIn');
+    //  상세 페이지에서 버튼이 사라짐.
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('accessToken');  // 보안을 위해 토큰 지우기.
     alert("로그아웃 되었습니다.");
     navigate('/');
   };
@@ -94,8 +103,18 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
           {/* (3) 우측 로그인/로그아웃 버튼 */}
           {isLoggedIn ? (
             <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                박세진님
+              {/* 이름 클릭 시 마이페이지 이동 */}
+              <Typography
+                variant="body2"
+                onClick={() => navigate('/mypage')} //  클릭 이벤트 
+                sx={{
+                  fontWeight: 'bold',
+                  color: 'primary.main',
+                  cursor: 'pointer', //  마우스 올리면 손가락 모양 구현.
+                  textDecoration: 'underline'
+                }}
+              >
+                {myName}님
               </Typography>
               <Button
                 variant="outlined"

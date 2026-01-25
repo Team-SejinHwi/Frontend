@@ -5,6 +5,8 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ItemDetail from './pages/ItemDetail';
 import ItemRegister from './pages/ItemRegister';
+import ItemEdit from './pages/ItemEdit';
+import MyPage from './pages/MyPage';
 
 function App() {
   // 🚀 [상태 관리 핵심] 로그인 상태를 여기서 관리합니다.
@@ -40,11 +42,15 @@ function App() {
         />
 
         {/* Signup은 회원가입 후 로그인 페이지로 보내기만 하면 되므로 당장 props 불필요 */}
-        <Route path="/signup" element={<Signup />} />
+        <Route
+          path="/signup"
+          element={<Signup />} />
 
         {/* 🚀  상세 페이지 라우트 설정 */}
         {/* /items/10, /items/9 처럼 뒤에 숫자가 오면 ItemDetail을 보여줌 */}
-        <Route path="/items/:id" element={<ItemDetail />} />
+        <Route
+          path="/items/:id"
+          element={<ItemDetail />} />
 
         {/* 상품 등록 페이지 라우트 */}
         <Route
@@ -52,6 +58,15 @@ function App() {
           element={<ItemRegister isLoggedIn={isLoggedIn} />}
         />
 
+        {/* 상품 수정 페이지 라우트 */}
+        <Route
+          path="/items/edit/:id"
+          element={<ItemEdit />} />
+
+        {/* 마이페이지 라우트 */}
+        <Route
+          path="/mypage"
+          element={<MyPage />} />
       </Routes>
     </BrowserRouter >
   );
