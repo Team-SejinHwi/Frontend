@@ -7,11 +7,8 @@ import {
 } from '@mui/material';
 import LockOutlineIcon from '@mui/icons-material/LockOutline';
 
-// 🎛️ [모드 스위치] 이 변수만 변경하면 모드가 바뀝니다!
-// true  : 프론트엔드 혼자 테스트 (가짜 로그인)
-// false : 백엔드(휘님)와 연동 (실제 API 통신)
-
-const IS_MOCK_MODE = true;
+// ✅ Config에서 API_BASE_URL도 가져와야 통신이 됩니다.
+import { IS_MOCK_MODE, API_BASE_URL } from '../config';
 
 export default function Login({ setIsLoggedIn }) {
   const navigate = useNavigate();
@@ -21,8 +18,10 @@ export default function Login({ setIsLoggedIn }) {
   const handleMockLogin = (data) => {
     console.log("🛠️ [Mock Mode] 가짜 로그인 시도:", data);
 
-    // ★ [추가] 브라우저 저장소에 '로그인 했음(1)'이라고 저장
+    // ★ [수정됨] 테스트할 때도 토큰/이메일이 있어야 '삭제 버튼'이 보입니다.
     localStorage.setItem('isLoggedIn', '1');
+    localStorage.setItem('accessToken', 'mock-access-token-123'); // 가짜 토큰
+    localStorage.setItem('userEmail', data.email); // 방금 입력한 이메일을 내 거라고 가정
 
     // 강제 성공 처리
     setIsLoggedIn(true);
@@ -35,18 +34,31 @@ export default function Login({ setIsLoggedIn }) {
     console.log("📡 [Real Mode] 서버로 로그인 요청:", data);
 
     try {
-      const response = await fetch('/api/auth/login', {
+      // ✅ fetch 경로에 API_BASE_URL 추가 (ItemDetail과 통일)
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': '69420' // ngrok 사용 시 필수
+        },
         body: JSON.stringify(data),
       });
 
       if (response.ok) {
-        // 성공 시 로직 (토큰 저장 등은 추후 추가)
         const result = await response.json();
-        localStorage.setItem('isLoggedIn', '1');
         console.log("응답 데이터:", result);
 
+        // 🚨 [핵심 수정] 서버가 준 토큰과 내 정보를 브라우저에 저장해야 함!
+        // API 명세서 구조: result.data.accessToken / result.data.user.email
+        if (result.data) {
+            localStorage.setItem('accessToken', result.data.accessToken);
+            
+            // user 객체가 있으면 이메일 저장, 없으면 입력한 이메일이라도 저장
+            const userEmail = result.data.user ? result.data.user.email : data.email;
+            localStorage.setItem('userEmail', userEmail);
+        }
+
+        localStorage.setItem('isLoggedIn', '1');
         setIsLoggedIn(true);
         alert('로그인 성공!');
         navigate('/');
@@ -59,13 +71,11 @@ export default function Login({ setIsLoggedIn }) {
     }
   };
 
-  // 🚀 [메인 핸들러] 폼 제출 시 스위치 값에 따라 경로를 분기함
+  // 🚀 [메인 핸들러]
   const onSubmit = (data) => {
     if (IS_MOCK_MODE) {
-      // 스위치가 켜져 있으면 가짜 함수 실행
       handleMockLogin(data);
     } else {
-      // 스위치가 꺼져 있으면 진짜 함수 실행
       handleRealLogin(data);
     }
   };
@@ -102,7 +112,6 @@ export default function Login({ setIsLoggedIn }) {
             Sign in
           </Typography>
 
-          {/* 현재 모드를 화면에 살짝 표시해줌 (개발 편의용, 나중에 삭제 가능) */}
           {IS_MOCK_MODE && (
             <Typography variant="caption" sx={{ color: 'red', fontWeight: 'bold', mb: 2 }}>
               ⚠️ 현재 테스트 모드입니다 (백엔드 통신 X)
