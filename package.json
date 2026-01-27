@@ -3,14 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@date-io/dayjs": "^3.2.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.3.7",
     "@mui/material": "^7.3.7",
+    "@mui/x-date-pickers": "^8.26.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
     "@testing-library/user-event": "^13.5.0",
+    "dayjs": "^1.11.19",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-hook-form": "^7.71.0",
@@ -42,5 +45,5 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "https://ossie-noncollectivistic-enduringly.ngrok-free.dev"  
+  "proxy": "https://ossie-noncollectivistic-enduringly.ngrok-free.dev"
 }

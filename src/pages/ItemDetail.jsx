@@ -1,57 +1,59 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Typography, Box, Button, Paper, CircularProgress, Grid } from '@mui/material';
+import { 
+  Container, Typography, Box, Button, Paper, CircularProgress, Grid 
+} from '@mui/material';
+
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { mockItems } from '../mocks/mockData'; // 👈 가짜 데이터 가져오기
 import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit'; // ✏️ 이거 없으면 에러나요!
+import EditIcon from '@mui/icons-material/Edit';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
+
+import { mockItems } from '../mocks/mockData';
 import { IS_MOCK_MODE, API_BASE_URL } from '../config';
+import RentalModal from '../components/RentalModal';
 
 export default function ItemDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
 
+  // 상태 관리
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isRentalModalOpen, setRentalModalOpen] = useState(false);
 
-  //  내 이메일 가져오기 (로그인 시 저장했다고 가정)
-  // 만약 로그인 안 했으면 null이 됨
+  // 현재 로그인한 사용자 정보 (권한 체크용)
   const myEmail = localStorage.getItem('userEmail');
+  // 🔑 로그인 여부 확인을 위한 토큰 가져오기
+  const isLoggedIn = !!localStorage.getItem('accessToken'); 
 
+  /**
+   * 1. 상품 상세 정보 로드
+   */
   useEffect(() => {
     const fetchDetail = async () => {
       try {
-        // 🚩 [A] Mock 모드일 때
         if (IS_MOCK_MODE) {
-          console.log(`🛠️ [Mock] 상세 데이터 찾는 중... ID: ${id}`);
-          // 가짜 데이터 배열에서 ID가 같은 것 찾기
           const found = mockItems.find(i => i.itemId === parseInt(id));
-
           if (found) {
-            // 0.5초 뒤에 데이터 세팅 (로딩 느낌 내기)
             setTimeout(() => {
               setItem(found);
               setLoading(false);
-            }, 500);
+            }, 500); 
             return;
           }
-          // 못 찾으면 아래 에러 로직으로 넘어감
         }
 
-        // 🚩 [B] Real 모드일 때 (기존 코드)
-
-        const response = await fetch(`/api/items/${id}`, {
-          headers: {
-            "ngrok-skip-browser-warning": "69420",
-          },
+        const response = await fetch(`${API_BASE_URL}/api/items/${id}`, {
+          headers: { "ngrok-skip-browser-warning": "69420" },
         });
 
-        if (!response.ok) throw new Error("상품을 찾을 수 없습니다.");
+        if (!response.ok) throw new Error("상품 조회 실패");
         const data = await response.json();
-        setItem(data.data || data);
+        setItem(data.data || data); 
 
       } catch (error) {
-        console.error("상세 정보 로드 실패:", error);
+        console.error("Error:", error);
         alert("상품 정보를 불러오는데 실패했습니다.");
         navigate('/');
       } finally {
@@ -62,69 +64,116 @@ export default function ItemDetail() {
     fetchDetail();
   }, [id, navigate]);
 
+  const isOwner = item?.owner?.email === myEmail;
 
-  
-  // //디버깅
-  // console.log('권한 디버깅', {
-  //   myEmail: localStorage.getItem('userEmail'),
-  //   onwerEmail: item?.owner?.email,
-  //   match: item?.owner?.email === localStorage.getItem('userEmail')
-  // });
-
-
-  //  주인인지 확인하는 변수 생성 (item이 로드된 후에 판단)
-  // item.owner.email : 글 쓴 사람 (API 명세서 3번 항목 참조)
-  // myEmail : 현재 로그인한 사람
-  const isOwner = item && item.owner && (item.owner.email === myEmail);
-
-  // (참고: Mock 모드일 때는 테스트를 위해 무조건 true로 두거나, 가짜 데이터 이메일과 맞추셔도 됩니다)
-
-
-  // 삭제 핸들러 함수
+  /**
+   * 2. 삭제 핸들러
+   */
   const handleDelete = async () => {
-    //1. 사용자 확인
-    if (!window.confirm("정말로 이 게시물을 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.")) {
-      return;
-    }
-    // [A] Mock 모드 삭제 시뮬레이션
+    if (!window.confirm("정말로 이 게시물을 삭제하시겠습니까?")) return;
+
     if (IS_MOCK_MODE) {
-      alert("[Mock] 삭제가 완료되었습니다.");
+      alert("[Mock] 삭제 완료");
       navigate('/');
       return;
     }
 
-    // [B] Real 모드 API 호출
     try {
-      // ⚠️ 중요: 로그인 시(Login.jsx) 저장했던 토큰 키값
       const token = localStorage.getItem('accessToken');
-
       const response = await fetch(`${API_BASE_URL}/api/items/${id}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`, // 명세서 Auth: 필수 조건 충족
+          'Authorization': `Bearer ${token}`,
           'ngrok-skip-browser-warning': '69420',
         },
       });
 
       if (response.ok) {
-        alert("상품이 성공적으로 삭제되었습니다.");
-        navigate('/'); // 메인으로 이동
+        alert("삭제되었습니다.");
+        navigate('/');
       } else {
-        // 에러 응답 파싱
-        const errorData = await response.text();
-        console.error("삭제 실패:", errorData);
-        alert("삭제에 실패했습니다. (본인 게시물이 아니거나 서버 오류)");
+        alert("삭제 실패");
       }
     } catch (error) {
-      console.error("Delete request error:", error);
-      alert("네트워크 오류가 발생했습니다.");
+      console.error(error);
     }
+  };
+
+  /**
+   * 🚨 3. [NEW] 모달 열기 전 로그인 체크 핸들러
+   */
+  const handleOpenModal = () => {
+    // 1. 로그인이 안 되어 있다면?
+    if (!isLoggedIn) {
+      // confirm 창을 띄워 의사를 물어봅니다.
+      if (window.confirm("로그인이 필요한 서비스입니다.\n로그인 페이지로 이동하시겠습니까?")) {
+        navigate('/login'); // 👈 로그인 페이지 이동.
+      }
+      return; // 모달을 열지 않고 함수 종료
+    }
+
+    // 2. 로그인이 되어 있다면 모달 열기
+    setRentalModalOpen(true);
   };
 
   const getImageUrl = (url) => {
     if (!url) return "https://via.placeholder.com/400?text=No+Image";
-    if (url.startsWith("http")) return url;
-    return `${API_BASE_URL}${url}`;
+    return url.startsWith("http") ? url : `${API_BASE_URL}${url}`;
+  };
+
+  /**
+   * 4. 버튼 렌더링
+   */
+  const renderActionButtons = () => {
+    if (isOwner) {
+      return (
+        <>
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={<EditIcon />}
+            onClick={() => navigate(`/items/edit/${id}`)}
+            sx={{ flex: 1, py: 1.5, fontWeight: 'bold' }}
+          >
+            수정
+          </Button>
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={<DeleteIcon />}
+            onClick={handleDelete}
+            sx={{ minWidth: '100px', py: 1.5, fontWeight: 'bold' }}
+          >
+            삭제
+          </Button>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <Button
+          variant="contained"
+          color="inherit"
+          sx={{ flex: 1, py: 1.5, fontWeight: 'bold', bgcolor: '#eee', color: '#333' }}
+          // 채팅 버튼도 로그인이 필요하다면 여기에 handleOpenModal을 연결할 수도 있음
+          onClick={() => alert("채팅 기능은 준비 중입니다.")} 
+        >
+          채팅하기
+        </Button>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<EventAvailableIcon />}
+          // 👇 기존: onClick={() => setRentalModalOpen(true)}
+          // 👇 변경: 로그인 체크 함수 연결
+          onClick={handleOpenModal} 
+          sx={{ flex: 2, py: 1.5, fontWeight: 'bold' }}
+        >
+          대여 신청하기
+        </Button>
+      </>
+    );
   };
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}><CircularProgress /></Box>;
@@ -132,7 +181,11 @@ export default function ItemDetail() {
 
   return (
     <Container maxWidth="md" sx={{ py: 5 }}>
-      <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/')} sx={{ mb: 3, fontWeight: 'bold', color: '#555' }}>
+      <Button 
+        startIcon={<ArrowBackIcon />} 
+        onClick={() => navigate('/')} 
+        sx={{ mb: 3, fontWeight: 'bold', color: '#555' }}
+      >
         목록으로
       </Button>
 
@@ -146,66 +199,45 @@ export default function ItemDetail() {
               sx={{ width: '100%', height: '100%', minHeight: '400px', objectFit: 'cover', bgcolor: '#f0f0f0' }}
             />
           </Grid>
+          
           <Grid item xs={12} md={6} sx={{ p: 4, display: 'flex', flexDirection: 'column' }}>
             <Typography variant="caption" color="text.secondary" sx={{ mb: 1 }}>
               등록일: {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "최근"}
             </Typography>
-            <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 2 }}>{item.title}</Typography>
-            <Typography variant="h5" color="primary" sx={{ fontWeight: 'bold', mb: 3 }}>
-              {item.price?.toLocaleString()}원 <span style={{ fontSize: '1rem', color: '#888' }}>/ 일</span>
+            
+            <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 2 }}>
+              {item.title}
             </Typography>
+            
+            {/* 가격 표시 (시간 기준) */}
+            <Typography variant="h5" color="primary" sx={{ fontWeight: 'bold', mb: 3 }}>
+              {item.price?.toLocaleString()}원 
+              <span style={{ fontSize: '1rem', color: '#888', marginLeft: '4px' }}>/ 시간</span>
+            </Typography>
+
             <Box sx={{ p: 2, bgcolor: '#f9f9f9', borderRadius: 2, mb: 3 }}>
               <Typography variant="subtitle2" color="text.secondary">📍 거래 희망 장소</Typography>
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>{item.location}</Typography>
+              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                {item.location}
+              </Typography>
             </Box>
+
             <Typography variant="body1" sx={{ flexGrow: 1, whiteSpace: 'pre-line', color: '#333' }}>
               {item.content || "상세 설명이 없습니다."}
             </Typography>
 
-            {/* 버튼 영역: Box에 flex를 줘서 버튼들을 가로로 예쁘게 배치 */}
             <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
-              <Button
-                variant="contained"
-                size="large"
-                // fullWidth 대신 flex: 1을 주면 공간을 나눠 가짐.
-                sx={{ py: 1.5, fontWeight: 'bold', flex: 1 }}
-              >
-                채팅하기
-              </Button>
-
-              {/* 주인일 때만 보이는 수정/삭제 버튼 그룹 */}
-              {isOwner && (
-                <>
-                  {/* ✏️ 수정 버튼  */}
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    size="large"
-                    startIcon={<EditIcon />}
-                    onClick={() => navigate(`/items/edit/${id}`)}
-                    sx={{ py: 1.5, fontWeight: 'bold', flex: 1 }}
-                  >
-                    수정
-                  </Button>
-
-                  {/* 🗑️ 삭제 버튼 */}
-                  {/*  조건부 렌더링: 주인일 때만 버튼 표시 */}
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    size="large"
-                    startIcon={<DeleteIcon />}
-                    onClick={handleDelete}
-                    sx={{ py: 1.5, fontWeight: 'bold', minWidth: '120px' }}
-                  >
-                    삭제
-                  </Button>
-                </>
-              )}
+              {renderActionButtons()}
             </Box>
           </Grid>
         </Grid>
       </Paper>
+
+      <RentalModal
+        open={isRentalModalOpen}
+        onClose={() => setRentalModalOpen(false)}
+        item={item}
+      />
     </Container>
   );
 }

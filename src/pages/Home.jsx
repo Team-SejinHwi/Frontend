@@ -15,63 +15,70 @@ const MAIN_IMAGE_URL = "https://i.postimg.cc/MHNP5WB5/image.jpg";
 export default function Home({ isLoggedIn, setIsLoggedIn }) {
   const navigate = useNavigate();
 
+  // =================================================================
+  // 1. 상태 관리 (State Management)
+  // =================================================================
   // 🚀 상품 리스트를 담을 상태
   const [items, setItems] = useState([]);
 
-  //  로그인한 사용자 정보 가져오기 (없으면 빈 문자열)
-  // (나중에 로그인할 때 'userName'도 같이 저장하면 더 좋음..)
+  // 로컬 스토리지에서 사용자 정보 가져오기 (없으면 기본값)
   const myEmail = localStorage.getItem('userEmail') || '';
+  // 이름이 없으면 이메일 앞자리(@ 앞부분)를 닉네임처럼 사용
   const myName = localStorage.getItem('userName') || myEmail.split('@')[0] || '사용자';
 
-  // 🚀 [Effect] 페이지가 켜지면 상품 데이터를 가져옵니다.
+  // =================================================================
+  // 2. 데이터 로드 (Data Fetching)
+  // =================================================================
   useEffect(() => {
+    // [A] Mock 모드 (백엔드 없이 테스트할 때)
     if (IS_MOCK_MODE) {
-      console.log("🛠️ Mock Data 로드됨");
+      console.log("🛠️ Home: Mock Data 로드됨");
       setItems(mockItems);
     } else {
-      // ✅ [수정됨] ngrok 보안 경고를 뚫고 진짜 데이터를 가져오는 코드
+      // [B] Real 모드 (백엔드 연결)
+      // ✅ ngrok 보안 경고를 우회하기 위한 헤더 추가
       fetch('/api/items', {
         headers: {
-          // 👇 이 헤더가 있어야 ngrok 경고창 없이 바로 통과됩니다! (필수)
-          "ngrok-skip-browser-warning": "69420",
+          "ngrok-skip-browser-warning": "69420", // 이 헤더 필수!
         },
       })
         .then(res => {
-          // 응답이 성공(200 OK)이 아니면 에러 처리
-          if (!res.ok) {
-            throw new Error(`서버 응답 오류: ${res.status}`);
-          }
+          if (!res.ok) throw new Error(`서버 응답 오류: ${res.status}`);
           return res.json();
         })
         .then(data => {
-          console.log("📥 서버에서 받은 원본 데이터:", data); // 확인용 로그
+          console.log("📥 서버 데이터 수신:", data);
 
-          // 휘님 백엔드가 데이터를 어떻게 주는지에 따라 처리
+          // 백엔드 응답 형태에 따라 유연하게 처리
           if (Array.isArray(data)) {
-            // Case A: 그냥 배열로 줄 때 ( [{}, {}] ) -> 바로 넣기
-            setItems(data);
+            setItems(data); // 배열이 바로 오는 경우
           } else if (data.data && Array.isArray(data.data)) {
-            // Case B: 감싸서 줄 때 ( { success: true, data: [] } ) -> 꺼내서 넣기
-            setItems(data.data);
+            setItems(data.data); // { success: true, data: [...] } 형태인 경우
           } else {
-            console.warn("데이터 형식이 예상과 다릅니다. 빈 배열로 설정합니다.");
+            console.warn("데이터 형식이 다릅니다. 빈 배열 처리.");
             setItems([]);
           }
         })
         .catch(err => {
           console.error("🚨 상품 로드 실패:", err);
-          // 에러나면 빈 배열 유지 (화면이 깨지진 않게)
+          setItems([]); // 에러 나도 화면이 꺼지지 않게 빈 배열 설정
         });
     }
   }, []);
 
+  // =================================================================
+  // 3. 핸들러 (Event Handlers)
+  // =================================================================
   const handleLogout = () => {
-    //화면 상태 끄기
+    // 1. React 상태 업데이트
     setIsLoggedIn(false);
+    
+    // 2. 로컬 스토리지 클린업 (보안 중요!)
     localStorage.removeItem('isLoggedIn');
-    //  상세 페이지에서 버튼이 사라짐.
     localStorage.removeItem('userEmail');
-    localStorage.removeItem('accessToken');  // 보안을 위해 토큰 지우기.
+    localStorage.removeItem('userName');
+    localStorage.removeItem('accessToken'); 
+
     alert("로그아웃 되었습니다.");
     navigate('/');
   };
@@ -79,7 +86,7 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#f9f9f9' }}>
 
-      {/* 1. 네비게이션 바 */}
+      {/* --- 1. 네비게이션 바 (Navbar) --- */}
       <AppBar position="static" color="default" elevation={1} sx={{ bgcolor: 'white' }}>
         <Toolbar sx={{ justifyContent: 'space-between' }}>
 
@@ -92,7 +99,7 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
             Re:Borrow
           </Typography>
 
-          {/* (2) 중앙 메뉴 버튼들 */}
+          {/* (2) 중앙 메뉴 (PC 화면에서만 보임) */}
           <Stack direction="row" spacing={2} sx={{ display: { xs: 'none', md: 'flex' } }}>
             <Button color="inherit" onClick={() => alert('준비 중인 페이지입니다.')}>소개</Button>
             <Button color="inherit" onClick={() => alert('준비 중인 페이지입니다.')}>QNA</Button>
@@ -103,14 +110,14 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
           {/* (3) 우측 로그인/로그아웃 버튼 */}
           {isLoggedIn ? (
             <Stack direction="row" spacing={1} alignItems="center">
-              {/* 이름 클릭 시 마이페이지 이동 */}
+              {/* 이름 클릭 시 마이페이지로 이동 */}
               <Typography
                 variant="body2"
-                onClick={() => navigate('/mypage')} //  클릭 이벤트 
+                onClick={() => navigate('/mypage')}
                 sx={{
                   fontWeight: 'bold',
                   color: 'primary.main',
-                  cursor: 'pointer', //  마우스 올리면 손가락 모양 구현.
+                  cursor: 'pointer',
                   textDecoration: 'underline'
                 }}
               >
@@ -142,7 +149,7 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
         </Toolbar>
       </AppBar>
 
-      {/* 2. 메인 배너 */}
+      {/* --- 2. 메인 배너 (Hero Section) --- */}
       <Box sx={{
         position: 'relative', width: '100%', height: '400px',
         backgroundImage: `url(${MAIN_IMAGE_URL})`, backgroundSize: 'cover', backgroundPosition: 'center',
@@ -161,7 +168,7 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
         </Container>
       </Box>
 
-      {/* 🚀 3. 상품 리스트 섹션 */}
+      {/* --- 3. 상품 리스트 섹션 (Grid v2 리팩토링 완료) --- */}
       <Container sx={{ py: 6 }}>
         <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 3 }}>
           🔥 최신 대여 상품
@@ -169,19 +176,25 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
 
         <Grid container spacing={3}>
           {items.map((item) => (
-            <Grid item key={item.itemId || item.id} xs={12} sm={6} md={3}>
+            // 🚨 [수정됨] MUI v6/Grid2 문법 적용
+            // 1. 'item' prop 삭제 (이제 불필요)
+            // 2. xs, sm, md 등의 사이즈 속성을 'size' 객체 안으로 이동
+            <Grid 
+                key={item.itemId || item.id} 
+                size={{ xs: 12, sm: 6, md: 3 }} // 모바일 1열, 태블릿 2열, PC 4열
+            >
               <ItemCard item={item} />
             </Grid>
           ))}
         </Grid>
       </Container>
 
-      {/* 4. 푸터 */}
+      {/* --- 4. 푸터 (Footer) --- */}
       <Box component="footer" sx={{ py: 3, mt: 'auto', bgcolor: '#f1f1f1', textAlign: 'center' }}>
         <Typography variant="body2" color="text.secondary">© 2026 Re:Borrow</Typography>
       </Box>
 
-      {/* 🚀 글쓰기 플로팅 버튼 (로그인 시에만 보임) */}
+      {/* 🚀 플로팅 버튼 (로그인 시에만 노출) */}
       {isLoggedIn && (
         <Fab
           color="primary"
