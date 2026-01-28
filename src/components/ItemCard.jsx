@@ -39,7 +39,8 @@ export default function ItemCard({ item }) {
         </Typography>
         {/* 👇 [추가] 작성자 이름도 데이터에 있길래 넣어봤습니다 */}
         <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-          작성자: {item.ownerName}
+          {/* 작성자: {item.ownerName} */}
+          작성자: {item.owner?.name || "알 수 없음"}
         </Typography>
       </CardContent>
     </Card>
