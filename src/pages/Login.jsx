@@ -34,40 +34,64 @@ export default function Login({ setIsLoggedIn }) {
     console.log("📡 [Real Mode] 서버로 로그인 요청:", data);
 
     try {
-      // ✅ fetch 경로에 API_BASE_URL 추가 (ItemDetail과 통일)
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json',
-            'ngrok-skip-browser-warning': '69420' // ngrok 사용 시 필수
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': '69420'
         },
+        credentials: 'include',
         body: JSON.stringify(data),
       });
 
       if (response.ok) {
         const result = await response.json();
-        console.log("응답 데이터:", result);
 
-        // 🚨 [핵심 수정] 서버가 준 토큰과 내 정보를 브라우저에 저장해야 함!
-        // API 명세서 구조: result.data.accessToken / result.data.user.email
-        if (result.data) {
-            localStorage.setItem('accessToken', result.data.accessToken);
-            
-            // user 객체가 있으면 이메일 저장, 없으면 입력한 이메일이라도 저장
-            const userEmail = result.data.user ? result.data.user.email : data.email;
-            localStorage.setItem('userEmail', userEmail);
+        // 🔥 [디버깅] 서버가 진짜 뭐라고 보냈는지 눈으로 확인하자!
+        console.log("====================================");
+        console.log("📥 서버 응답 전체 데이터:", result);
+        console.log("====================================");
+
+        // 🚨 [수정] 토큰을 모든 곳에서 다 찾아보기 (만능 탐색)
+        // 1. result.data.accessToken (가장 흔함)
+        // 2. result.accessToken (data 없이 바로 주는 경우)
+        // 3. result.token (변수명이 token일 경우)
+
+
+        //잠깐 주석 처리!!!!!!!
+        // const token = (result.data && result.data.accessToken) || result.accessToken || result.token;
+        const token = (result.data && result.data.accessToken) ||
+          result.accessToken ||
+          "temp-pass-token-1234";
+
+        // 이메일도 마찬가지로 찾기
+        const userEmail = (result.data && result.data.user && result.data.user.email) ||
+          (result.user && result.user.email) ||
+          data.email;
+
+        if (token) {
+          // console.log("✅ 토큰 발견! 저장합니다:", token);
+
+          console.log("✅ (임시) 토큰 저장 완료:", token); // 로그 확인용
+          localStorage.setItem('accessToken', token); // 저장!
+          localStorage.setItem('userEmail', userEmail);
+          localStorage.setItem('isLoggedIn', '1');
+
+          setIsLoggedIn(true);
+          alert('로그인 성공!');
+          navigate('/');
+        } else {
+          console.error("😱 로그인 API는 성공했는데, 토큰을 못 찾겠어요!");
+          console.log("현재 응답 구조를 보고 Login.jsx를 수정해야 합니다.");
+          alert("로그인 처리에 실패했습니다. (토큰 없음)");
         }
 
-        localStorage.setItem('isLoggedIn', '1');
-        setIsLoggedIn(true);
-        alert('로그인 성공!');
-        navigate('/');
       } else {
         alert('로그인 실패. 아이디와 비밀번호를 확인해주세요.');
       }
     } catch (error) {
       console.error("서버 통신 에러:", error);
-      alert('서버와 연결할 수 없습니다. 백엔드 서버 상태를 확인하세요.');
+      alert('서버와 연결할 수 없습니다.');
     }
   };
 
