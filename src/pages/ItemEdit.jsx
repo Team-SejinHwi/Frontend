@@ -112,7 +112,9 @@ export default function ItemEdit() {
 
     // [B] REAL 모드 (PUT 요청)
     try {
-      const token = localStorage.getItem('accessToken');
+
+
+      // const token = localStorage.getItem('accessToken');
       const formData = new FormData();
 
       // 1. JSON 데이터 (필수)
@@ -134,8 +136,12 @@ export default function ItemEdit() {
 
       const response = await fetch(`${API_BASE_URL}/api/items/${id}`, { 
         method: 'PUT', // 👈 POST에서 PUT으로 변경
+
+        // 🔥 [핵심 추가] 쿠키(JSESSIONID)를 백엔드로 보내는 옵션, 나중에 제거
+        credentials: 'include',
+
         headers: {
-            "Authorization": `Bearer ${token}`, // 👈 토큰 필수
+            // "Authorization": `Bearer ${token}`, // 👈 토큰 필수, 나중에 활성화
             "ngrok-skip-browser-warning": "69420",
         },
         body: formData, 
@@ -210,7 +216,7 @@ export default function ItemEdit() {
           <Stack spacing={3}>
             <TextField label="글 제목" name="title" fullWidth required value={values.title} onChange={handleChange} />
             <Stack direction="row" spacing={2}>
-              <TextField label="가격 (1일 기준)" name="price" type="number" fullWidth required value={values.price} onChange={handleChange} />
+              <TextField label="가격 (1시간 기준)" name="price" type="number" fullWidth required value={values.price} onChange={handleChange} />
               <TextField label="거래 희망 장소" name="location" fullWidth required value={values.location} onChange={handleChange} />
             </Stack>
             <TextField label="자세한 설명" name="content" multiline rows={5} fullWidth required value={values.content} onChange={handleChange} />
