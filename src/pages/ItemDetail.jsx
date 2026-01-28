@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  Container, Typography, Box, Button, Paper, CircularProgress, Grid 
+import {
+  Container, Typography, Box, Button, Paper, CircularProgress, Grid
 } from '@mui/material';
 
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -25,7 +25,7 @@ export default function ItemDetail() {
   // 현재 로그인한 사용자 정보 (권한 체크용)
   const myEmail = localStorage.getItem('userEmail');
   // 🔑 로그인 여부 확인을 위한 토큰 가져오기
-  const isLoggedIn = !!localStorage.getItem('accessToken'); 
+  const isLoggedIn = !!localStorage.getItem('accessToken');
 
   /**
    * 1. 상품 상세 정보 로드
@@ -39,7 +39,7 @@ export default function ItemDetail() {
             setTimeout(() => {
               setItem(found);
               setLoading(false);
-            }, 500); 
+            }, 500);
             return;
           }
         }
@@ -50,7 +50,7 @@ export default function ItemDetail() {
 
         if (!response.ok) throw new Error("상품 조회 실패");
         const data = await response.json();
-        setItem(data.data || data); 
+        setItem(data.data || data);
 
       } catch (error) {
         console.error("Error:", error);
@@ -63,6 +63,19 @@ export default function ItemDetail() {
 
     fetchDetail();
   }, [id, navigate]);
+
+  // 👇 [디버깅 코드] 이 부분을 추가해서 콘솔을 확인해주세요!
+  console.log("=============== 주인 확인 디버깅 ===============");
+  console.log("1. 내 이메일 (내 주머니):", myEmail);
+  console.log("2. 상품 데이터 전체 (서버가 준 거):", item);
+
+  // 혹시 owner가 null인지, 구조가 다른지 확인
+  if (item) {
+    console.log("3. 서버가 말하는 주인 정보:", item.owner);
+    console.log("4. 서버가 말하는 주인의 이메일:", item.owner?.email);
+   
+  }
+  console.log("===============================================");
 
   const isOwner = item?.owner?.email === myEmail;
 
@@ -79,23 +92,32 @@ export default function ItemDetail() {
     }
 
     try {
-      const token = localStorage.getItem('accessToken');
+
+      // const token = localStorage.getItem('accessToken');
       const response = await fetch(`${API_BASE_URL}/api/items/${id}`, {
         method: 'DELETE',
+
+        // 🔥 [핵심 추가] 쿠키를 실어 보내야 삭제 권한이 인정됨!, 나중에 지우기
+        credentials: 'include',
+
         headers: {
-          'Authorization': `Bearer ${token}`,
+          // 'Authorization': `Bearer ${token}`, // 나중에 활성화
           'ngrok-skip-browser-warning': '69420',
         },
       });
 
+      const result = await response.json();
+
       if (response.ok) {
-        alert("삭제되었습니다.");
+        // 백엔드 메시지: "상품 삭제 완료" 등
+        alert(result.message || "삭제되었습니다.");
         navigate('/');
       } else {
-        alert("삭제 실패");
+        alert(result.message || "삭제 실패");
       }
     } catch (error) {
       console.error(error);
+      alert("서버 통신 오류");
     }
   };
 
@@ -157,7 +179,7 @@ export default function ItemDetail() {
           color="inherit"
           sx={{ flex: 1, py: 1.5, fontWeight: 'bold', bgcolor: '#eee', color: '#333' }}
           // 채팅 버튼도 로그인이 필요하다면 여기에 handleOpenModal을 연결할 수도 있음
-          onClick={() => alert("채팅 기능은 준비 중입니다.")} 
+          onClick={() => alert("채팅 기능은 준비 중입니다.")}
         >
           채팅하기
         </Button>
@@ -167,7 +189,7 @@ export default function ItemDetail() {
           startIcon={<EventAvailableIcon />}
           // 👇 기존: onClick={() => setRentalModalOpen(true)}
           // 👇 변경: 로그인 체크 함수 연결
-          onClick={handleOpenModal} 
+          onClick={handleOpenModal}
           sx={{ flex: 2, py: 1.5, fontWeight: 'bold' }}
         >
           대여 신청하기
@@ -181,9 +203,9 @@ export default function ItemDetail() {
 
   return (
     <Container maxWidth="md" sx={{ py: 5 }}>
-      <Button 
-        startIcon={<ArrowBackIcon />} 
-        onClick={() => navigate('/')} 
+      <Button
+        startIcon={<ArrowBackIcon />}
+        onClick={() => navigate('/')}
         sx={{ mb: 3, fontWeight: 'bold', color: '#555' }}
       >
         목록으로
@@ -199,19 +221,19 @@ export default function ItemDetail() {
               sx={{ width: '100%', height: '100%', minHeight: '400px', objectFit: 'cover', bgcolor: '#f0f0f0' }}
             />
           </Grid>
-          
+
           <Grid item xs={12} md={6} sx={{ p: 4, display: 'flex', flexDirection: 'column' }}>
             <Typography variant="caption" color="text.secondary" sx={{ mb: 1 }}>
               등록일: {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "최근"}
             </Typography>
-            
+
             <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 2 }}>
               {item.title}
             </Typography>
-            
+
             {/* 가격 표시 (시간 기준) */}
             <Typography variant="h5" color="primary" sx={{ fontWeight: 'bold', mb: 3 }}>
-              {item.price?.toLocaleString()}원 
+              {item.price?.toLocaleString()}원
               <span style={{ fontSize: '1rem', color: '#888', marginLeft: '4px' }}>/ 시간</span>
             </Typography>
 
