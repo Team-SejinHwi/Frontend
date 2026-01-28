@@ -59,15 +59,21 @@ export default function MyPage() {
                 }
 
                 // [B] Real 모드: Promise.all을 사용하여 두 API를 동시에 호출 (속도 향상)
-                const token = localStorage.getItem('accessToken');
+                // 임시 주석 const token = localStorage.getItem('accessToken');
                 const commonHeaders = {
                     "ngrok-skip-browser-warning": "69420", // Ngrok 경고 무시용 헤더
-                    ...(token && { 'Authorization': `Bearer ${token}` })
+                    // 임시 주석임.  ...(token && { 'Authorization': `Bearer ${token}` }) 
                 };
 
                 const [itemsRes, userRes] = await Promise.all([
-                    fetch(`${API_BASE_URL}/api/items`, { headers: commonHeaders }),
-                    fetch(`${API_BASE_URL}/api/members/me`, { headers: commonHeaders })
+                    fetch(`${API_BASE_URL}/api/items`, {
+                         headers: commonHeaders,
+                        credentials: 'include' // 👈 내 쿠키 가져가! (내 물건 조회용)  //나중에 삭제
+                        }),
+                    fetch(`${API_BASE_URL}/api/members/me`, {
+                         headers: commonHeaders,
+                         credentials: 'include' // 👈 내 쿠키 가져가! (내 프로필 조회용)  // 나중에 삭제
+                         })
                 ]);
 
                 // 1. 내 물건 필터링
@@ -81,10 +87,13 @@ export default function MyPage() {
                 // 2. 내 프로필 정보
                 if (userRes.ok) {
                     const userData = await userRes.json();
+
+                    // 👇  포장지(data)가 있는지 확인하고 가져오기
+                    const user = userData.data || userData;
                     setUserInfo({
-                        name: userData.data.name || '',
-                        phone: userData.data.phone || '',
-                        address: userData.data.address || ''
+                        name: user.name || '',
+                        phone: user.phone || '',
+                        address: user.address || ''
                     });
                 }
 
@@ -108,14 +117,51 @@ export default function MyPage() {
     const handlePassChange = (e) => setPasswords(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
     // 프로필 수정 요청
+    // 프로필 수정 요청
     const handleSubmitProfile = async () => {
+        // [A] Mock 모드
         if (IS_MOCK_MODE) {
             alert("🎉 [Mock] 수정 완료");
             setOpenProfileModal(false);
             return;
         }
-        // TODO: 실제 PATCH API 연동 필요
-        alert("기능 준비중입니다.");
+
+        // [B] Real 모드
+        try {
+            // 1. 보낼 데이터 준비 (이름, 전화번호, 주소)
+            const updateData = {
+                name: userInfo.name,
+                phone: userInfo.phone,
+                address: userInfo.address
+            };
+
+            // 🚨 중요: 주소(/api/members/me)와 메소드(PUT)는 백엔드 명세에 따라 다를 수 있습니다!
+            // (보통 내 정보 수정은 PUT /api/members/me 를 많이 씁니다.)
+            const response = await fetch(`${API_BASE_URL}/api/members/me`, {
+                method: 'PUT', // 혹시 405 에러가 나면 'PATCH'로 바꿔보세요!
+                
+                credentials: 'include', // 👈 필수! 내 쿠키(세션)를 같이 보내야 함
+
+                headers: {
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': '69420',
+                },
+                body: JSON.stringify(updateData)
+            });
+
+            if (response.ok) {
+                alert("프로필 정보가 성공적으로 수정되었습니다.");
+                setOpenProfileModal(false);
+                // 필요하다면 여기서 새로고침을 한 번 해주셔도 좋습니다.
+                // window.location.reload(); 
+            } else {
+                const errorData = await response.json();
+                alert(errorData.message || "프로필 수정 실패");
+            }
+        } catch (error) {
+            console.error("프로필 수정 오류:", error);
+            alert("서버와 통신 중 오류가 발생했습니다.");
+        }
     };
 
     // 비밀번호 변경 요청
@@ -147,12 +193,12 @@ export default function MyPage() {
         }
 
         try {
-            const token = localStorage.getItem('accessToken');
+            // 임시 주석   const token = localStorage.getItem('accessToken');
             const response = await fetch(`${API_BASE_URL}/api/members/password`, {
                 method: 'PATCH',  //리소스의 일부만 수정하므로 PATCH 메소드 사용.
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    // 'Authorization': `Bearer ${token}` // 나중에 주석
                 },
                 body: JSON.stringify({
                     currentPassword,
