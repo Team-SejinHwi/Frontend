@@ -18,9 +18,10 @@ export default function Login({ setIsLoggedIn }) {
   const handleMockLogin = (data) => {
     console.log("🛠️ [Mock Mode] 가짜 로그인 시도:", data);
 
-    // ★ [수정됨] 테스트할 때도 토큰/이메일이 있어야 '삭제 버튼'이 보입니다.
+    //  테스트할 때도 토큰/이메일이 있어야 '삭제 버튼'이 보인다.
     localStorage.setItem('isLoggedIn', '1');
     localStorage.setItem('accessToken', 'mock-access-token-123'); // 가짜 토큰
+    localStorage.setItem('refreshToken', 'mock-access-token-123'); // 가짜 토큰
     localStorage.setItem('userEmail', data.email); // 방금 입력한 이메일을 내 거라고 가정
 
     // 강제 성공 처리
@@ -29,11 +30,13 @@ export default function Login({ setIsLoggedIn }) {
     navigate('/');
   };
 
-  // 2️⃣ [실전용 함수] 백엔드 서버와 실제로 통신할 때 실행됨
+  
+  // 2️⃣ [실전용 함수] Login.jsx 내부 수정
   const handleRealLogin = async (data) => {
     console.log("📡 [Real Mode] 서버로 로그인 요청:", data);
 
     try {
+      // 1. 로그인 요청
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
@@ -46,46 +49,51 @@ export default function Login({ setIsLoggedIn }) {
 
       if (response.ok) {
         const result = await response.json();
+        console.log("📥 서버 응답(토큰):", result);
 
-        // 🔥 [디버깅] 서버가 진짜 뭐라고 보냈는지 눈으로 확인하자!
-        console.log("====================================");
-        console.log("📥 서버 응답 전체 데이터:", result);
-        console.log("====================================");
+        // 토큰 추출
+        const accessToken = result.accessToken || (result.data && result.data.accessToken);
+        const refreshToken = result.refreshToken || (result.data && result.data.refreshToken);
 
-        // 🚨 [수정] 토큰을 모든 곳에서 다 찾아보기 (만능 탐색)
-        // 1. result.data.accessToken (가장 흔함)
-        // 2. result.accessToken (data 없이 바로 주는 경우)
-        // 3. result.token (변수명이 token일 경우)
-
-
-        //잠깐 주석 처리!!!!!!!
-        // const token = (result.data && result.data.accessToken) || result.accessToken || result.token;
-        const token = (result.data && result.data.accessToken) ||
-          result.accessToken ||
-          "temp-pass-token-1234";
-
-        // 이메일도 마찬가지로 찾기
-        const userEmail = (result.data && result.data.user && result.data.user.email) ||
-          (result.user && result.user.email) ||
-          data.email;
-
-        if (token) {
-          // console.log("✅ 토큰 발견! 저장합니다:", token);
-
-          console.log("✅ (임시) 토큰 저장 완료:", token); // 로그 확인용
-          localStorage.setItem('accessToken', token); // 저장!
-          localStorage.setItem('userEmail', userEmail);
+        if (accessToken && refreshToken) {
+          // 2. 토큰 먼저 저장
+          localStorage.setItem('accessToken', accessToken);
+          localStorage.setItem('refreshToken', refreshToken);
+          localStorage.setItem('userEmail', data.email);
           localStorage.setItem('isLoggedIn', '1');
+
+          // 🚨  토큰을 받았으니, 바로 "내 정보(ID)"를 물어본다.
+          console.log("🕵️‍♂️ ID를 찾기 위해 내 정보 조회(/api/members/me) 실행...");
+          
+          const meResponse = await fetch(`${API_BASE_URL}/api/members/me`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`, // 방금 받은 따끈한 토큰 사용
+              'ngrok-skip-browser-warning': '69420'
+            }
+          });
+
+          if (meResponse.ok) {
+            const meResult = await meResponse.json();
+            console.log("👤 내 정보 응답:", meResult);
+
+            // 여기서 진짜 ID를 찾아서 저장! (구조에 따라 다를 수 있어 안전하게 다 찾음)
+            const realUserId = meResult.id || meResult.userId || (meResult.data && meResult.data.id);
+            
+            if (realUserId) {
+                console.log("✅ 진짜 ID 발견:", realUserId);
+                localStorage.setItem('userId', realUserId);
+            } else {
+                console.warn("😱 내 정보에도 ID가 없어요! (백엔드 확인 필요)");
+            }
+          }
 
           setIsLoggedIn(true);
           alert('로그인 성공!');
           navigate('/');
         } else {
-          console.error("😱 로그인 API는 성공했는데, 토큰을 못 찾겠어요!");
-          console.log("현재 응답 구조를 보고 Login.jsx를 수정해야 합니다.");
-          alert("로그인 처리에 실패했습니다. (토큰 없음)");
+          alert("로그인 실패 (토큰 누락)");
         }
-
       } else {
         alert('로그인 실패. 아이디와 비밀번호를 확인해주세요.');
       }

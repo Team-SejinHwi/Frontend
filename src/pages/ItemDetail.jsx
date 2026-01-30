@@ -73,7 +73,7 @@ export default function ItemDetail() {
   if (item) {
     console.log("3. 서버가 말하는 주인 정보:", item.owner);
     console.log("4. 서버가 말하는 주인의 이메일:", item.owner?.email);
-   
+
   }
   console.log("===============================================");
 
@@ -93,15 +93,15 @@ export default function ItemDetail() {
 
     try {
 
-      // const token = localStorage.getItem('accessToken');
+      const token = localStorage.getItem('accessToken');
       const response = await fetch(`${API_BASE_URL}/api/items/${id}`, {
         method: 'DELETE',
 
-        // 🔥 [핵심 추가] 쿠키를 실어 보내야 삭제 권한이 인정됨!, 나중에 지우기
-        credentials: 'include',
+        //   쿠키를 실어 보내야 삭제 권한이 인정됨!, 
+        // credentials: 'include',
 
         headers: {
-          // 'Authorization': `Bearer ${token}`, // 나중에 활성화
+          'Authorization': `Bearer ${token}`,
           'ngrok-skip-browser-warning': '69420',
         },
       });
@@ -136,6 +136,59 @@ export default function ItemDetail() {
 
     // 2. 로그인이 되어 있다면 모달 열기
     setRentalModalOpen(true);
+  };
+
+
+  const handleChatStart = async () => {
+    // 1. 로그인 체크
+    if (!isLoggedIn) {
+      if (window.confirm("로그인이 필요한 서비스입니다.\n로그인 페이지로 이동하시겠습니까?")) {
+        navigate('/login');
+      }
+      return;
+    }
+
+    // 2. Mock 모드 체크
+    if (IS_MOCK_MODE) {
+      console.log("🛠️ [Mock Mode] 가상 채팅방으로 이동합니다.");
+      navigate(`/chat/999`);
+      return;
+    }
+
+    // 3. 실전 모드 (서버 통신)
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_BASE_URL}/api/chat/room`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'ngrok-skip-browser-warning': '69420'
+        },
+        body: JSON.stringify({ itemId: item.itemId }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        // 🚨 ] roomId가 'data' 안에 있을 수도 있고, 그냥 있을 수도 있음!
+        // 둘 다 확인하는 '만능 탐색' 로직 적용
+        const realRoomId = (result.data && result.data.roomId) || result.roomId;
+
+        if (realRoomId) {
+            console.log("채팅방 생성 성공:", realRoomId);
+            navigate(`/chat/${realRoomId}`);
+        } else {
+            console.error("⛔ 방 번호를 찾을 수 없음:", result);
+            alert("서버 응답에 roomId가 없습니다.");
+        }
+      } else {
+        alert(result.message || "채팅방 생성 실패");
+      }
+    } catch (error) {
+      console.error("채팅방 에러:", error);
+      alert("서버 연결에 실패했습니다.");
+    }
   };
 
   const getImageUrl = (url) => {
@@ -179,7 +232,7 @@ export default function ItemDetail() {
           color="inherit"
           sx={{ flex: 1, py: 1.5, fontWeight: 'bold', bgcolor: '#eee', color: '#333' }}
           // 채팅 버튼도 로그인이 필요하다면 여기에 handleOpenModal을 연결할 수도 있음
-          onClick={() => alert("채팅 기능은 준비 중입니다.")}
+          onClick={handleChatStart}
         >
           채팅하기
         </Button>

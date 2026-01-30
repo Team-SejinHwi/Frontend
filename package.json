@@ -9,6 +9,7 @@
     "@mui/icons-material": "^7.3.7",
     "@mui/material": "^7.3.7",
     "@mui/x-date-pickers": "^8.26.0",
+    "@stomp/stompjs": "^7.2.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
@@ -19,6 +20,7 @@
     "react-hook-form": "^7.71.0",
     "react-router-dom": "^7.12.0",
     "react-scripts": "5.0.1",
+    "sockjs-client": "^1.6.1",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
