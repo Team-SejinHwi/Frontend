@@ -33,7 +33,7 @@ export default function ReceivedRequests() {
           setLoading(false);
           return;
         }
-        
+
         const token = localStorage.getItem('accessToken');
         const response = await fetch(`${API_BASE_URL}/api/rentals/requests`, {
           headers: {
@@ -41,7 +41,7 @@ export default function ReceivedRequests() {
             "ngrok-skip-browser-warning": "69420"
           }
         });
-        
+
         if (response.ok) {
           const result = await response.json();
           setRequests(result.data || []);
@@ -59,42 +59,48 @@ export default function ReceivedRequests() {
   // 승인/거절 처리 핸들러
   const handleDecision = async (rentalId, decision) => {
     const isApprove = decision === 'approve';
-    const actionText = isApprove ? '승인' : '거절';
+    let rejectReason = null;
 
-    if (!window.confirm(`정말 이 요청을 ${actionText}하시겠습니까?`)) return;
+    // 1. 거절일 경우 사유 입력 받기 (명세서 필수 사항)
+    if (!isApprove) {
+      rejectReason = window.prompt("거절 사유를 입력해주세요:");
+      if (!rejectReason) return; // 취소 시 중단
+    }
 
-    // [Mock Mode] 상태 즉시 변경 시뮬레이션
+    if (!window.confirm(`정말 이 요청을 ${isApprove ? '승인' : '거절'}하시겠습니까?`)) return;
+
     if (IS_MOCK_MODE) {
-      alert(`[Mock] ${actionText} 처리되었습니다.`);
-      setRequests(prev => prev.map(req => 
-        req.rentalId === rentalId 
-          ? { ...req, status: isApprove ? 'APPROVED' : 'REJECTED' } 
-          : req
+      alert(`[Mock] 처리되었습니다.`);
+      setRequests(prev => prev.map(req =>
+        req.rentalId === rentalId ? { ...req, status: isApprove ? 'APPROVED' : 'REJECTED' } : req
       ));
       return;
     }
 
-    // [Real Mode] 서버 통신
     try {
       const token = localStorage.getItem('accessToken');
-      const response = await fetch(`${API_BASE_URL}/api/rentals/${rentalId}/${decision}`, {
+      const response = await fetch(`${API_BASE_URL}/api/rentals/${rentalId}/decision`, {
         method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
-          "ngrok-skip-browser-warning": "69420"
-        }
+          'ngrok-skip-browser-warning': '69420'
+        },
+        // 🚩 휘님의 최신 명세서 규격 적용
+        body: JSON.stringify({
+          approved: isApprove,
+          rejectReason: isApprove ? null : rejectReason
+        })
       });
 
       if (response.ok) {
-        alert(`성공적으로 ${actionText}되었습니다.`);
-        // 전체 리스트 재조회 대신, 로컬 상태만 업데이트하여 UX 개선 (선택사항)
-        setRequests(prev => prev.map(req => 
-            req.rentalId === rentalId 
-            ? { ...req, status: isApprove ? 'APPROVED' : 'REJECTED' } 
-            : req
+        alert(isApprove ? "승인되었습니다." : "거절되었습니다.");
+        setRequests(prev => prev.map(req =>
+          req.rentalId === rentalId ? { ...req, status: isApprove ? 'APPROVED' : 'REJECTED' } : req
         ));
       } else {
-        alert("처리 중 오류가 발생했습니다.");
+        const errorMsg = await response.text();
+        alert(`처리 실패: ${errorMsg}`);
       }
     } catch (error) {
       console.error(error);
@@ -134,32 +140,32 @@ export default function ReceivedRequests() {
                     📅 기간: {dayjs(req.startDate).format('MM/DD HH:mm')} ~ {dayjs(req.endDate).format('MM/DD HH:mm')}
                   </Typography>
                 </Grid>
-                
+
                 {/* 우측: 상태 및 버튼 영역 */}
                 <Grid item xs={12} sm={4} sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
                   <Box sx={{ mb: 1 }}>
-                    <Chip 
-                        label={statusStyle.label} 
-                        color={statusStyle.color} 
-                        icon={statusStyle.icon} 
-                        variant={statusStyle.variant || 'filled'}
+                    <Chip
+                      label={statusStyle.label}
+                      color={statusStyle.color}
+                      icon={statusStyle.icon}
+                      variant={statusStyle.variant || 'filled'}
                     />
                   </Box>
-                  
+
                   {/* 상태가 'WAITING'일 때만 승인/거절 버튼 노출 */}
                   {req.status === 'WAITING' && (
                     <Stack direction="row" spacing={1} justifyContent={{ xs: 'flex-start', sm: 'flex-end' }}>
-                      <Button 
-                        variant="contained" 
-                        color="primary" 
+                      <Button
+                        variant="contained"
+                        color="primary"
                         size="small"
                         onClick={() => handleDecision(req.rentalId, 'approve')}
                       >
                         승인
                       </Button>
-                      <Button 
-                        variant="outlined" 
-                        color="error" 
+                      <Button
+                        variant="outlined"
+                        color="error"
                         size="small"
                         onClick={() => handleDecision(req.rentalId, 'reject')}
                       >

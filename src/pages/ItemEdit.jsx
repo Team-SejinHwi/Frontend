@@ -114,7 +114,7 @@ export default function ItemEdit() {
     try {
 
 
-      // const token = localStorage.getItem('accessToken');
+      const token = localStorage.getItem('accessToken');
       const formData = new FormData();
 
       // 1. JSON 데이터 (필수)
@@ -137,11 +137,11 @@ export default function ItemEdit() {
       const response = await fetch(`${API_BASE_URL}/api/items/${id}`, { 
         method: 'PUT', // 👈 POST에서 PUT으로 변경
 
-        // 🔥 [핵심 추가] 쿠키(JSESSIONID)를 백엔드로 보내는 옵션, 나중에 제거
-        credentials: 'include',
+        //  [핵심 추가] 쿠키(JSESSIONID)를 백엔드로 보내는 옵션 나중에 제거
+        // credentials: 'include',
 
         headers: {
-            // "Authorization": `Bearer ${token}`, // 👈 토큰 필수, 나중에 활성화
+             "Authorization": `Bearer ${token}`, // 👈 토큰 필수
             "ngrok-skip-browser-warning": "69420",
         },
         body: formData, 
