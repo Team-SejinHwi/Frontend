@@ -72,12 +72,13 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
   const handleLogout = () => {
     // 1. React 상태 업데이트
     setIsLoggedIn(false);
-    
+
     // 2. 로컬 스토리지 클린업 (보안 중요!)
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userName');
-    localStorage.removeItem('accessToken'); 
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
 
     alert("로그아웃 되었습니다.");
     navigate('/');
@@ -179,9 +180,9 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
             // 🚨 [수정됨] MUI v6/Grid2 문법 적용
             // 1. 'item' prop 삭제 (이제 불필요)
             // 2. xs, sm, md 등의 사이즈 속성을 'size' 객체 안으로 이동
-            <Grid 
-                key={item.itemId || item.id} 
-                size={{ xs: 12, sm: 6, md: 3 }} // 모바일 1열, 태블릿 2열, PC 4열
+            <Grid
+              key={item.itemId || item.id}
+              size={{ xs: 12, sm: 6, md: 3 }} // 모바일 1열, 태블릿 2열, PC 4열
             >
               <ItemCard item={item} />
             </Grid>

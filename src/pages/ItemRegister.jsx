@@ -68,7 +68,7 @@ export default function ItemRegister({ isLoggedIn }) {
       alert("상품 이미지는 필수입니다!");
       return;
     }
-    // ⭐ [여기!] 이 코드를 반드시 추가해야 합니다! ⭐
+    // ⭐  ⭐
     // (로그인할 때 저장한 이름이 'accessToken'인지 'token'인지 확인하세요. 보통 accessToken입니다.)
     const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
 
@@ -93,30 +93,15 @@ export default function ItemRegister({ isLoggedIn }) {
       formData.append("itemData", jsonBlob);
 
 
-      //임시!!!  const response = await fetch('/api/items', {
-      //   method: 'POST',
-      //   headers: {
-      //     // 👇 [중요] 이 부분이 빠져서 에러가 난 겁니다! 꼭 추가해주세요.
-      //     'Authorization': `Bearer ${token}`,
-      //     "ngrok-skip-browser-warning": "69420",
-      //   },
-      //   body: formData,
-      // });
-
-      // ✅  주소 앞에 API_BASE_URL 붙이고, credentials 추가!
-      const response = await fetch(`${API_BASE_URL}/api/items`, {
+      const response = await fetch('/api/items', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`, // 가짜 토큰(폼잡기용)
+          // 👇 토큰값
+          'Authorization': `Bearer ${token}`,
           "ngrok-skip-browser-warning": "69420",
         },
-        // 👇 [필수] 로그인 때 받은 쿠키(JSESSIONID)를 서버에 보여주는 옵션
-        credentials: 'include',
-
         body: formData,
       });
-
-
 
       if (response.ok) {
         alert("🎉 상품 등록 성공!");
