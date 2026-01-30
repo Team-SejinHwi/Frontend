@@ -7,6 +7,7 @@ import ItemDetail from './pages/ItemDetail';
 import ItemRegister from './pages/ItemRegister';
 import ItemEdit from './pages/ItemEdit';
 import MyPage from './pages/MyPage';
+import ChatRoom from './pages/ChatRoom';
 
 function App() {
   // 🚀 [상태 관리 핵심] 로그인 상태를 여기서 관리합니다.
@@ -67,6 +68,14 @@ function App() {
         <Route
           path="/mypage"
           element={<MyPage />} />
+
+
+        {/* 🚀 채팅방 라우트 추가 */}
+
+        <Route
+          path="/chat/:roomId"
+          element={<ChatRoom />}
+        />
       </Routes>
     </BrowserRouter >
   );

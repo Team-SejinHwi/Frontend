@@ -21,6 +21,8 @@ import { mockItems, mockUser } from '../mocks/mockData';
 import ItemCard from '../components/ItemCard';
 import ReceivedRequests from '../components/ReceivedRequests';
 import SentRequests from '../components/SentRequests';
+import ChatIcon from '@mui/icons-material/Chat';
+import ChatList from '../components/ChatList';
 
 export default function MyPage() {
     const navigate = useNavigate();
@@ -59,21 +61,21 @@ export default function MyPage() {
                 }
 
                 // [B] Real 모드: Promise.all을 사용하여 두 API를 동시에 호출 (속도 향상)
-                // 임시 주석 const token = localStorage.getItem('accessToken');
+                const token = localStorage.getItem('accessToken');
                 const commonHeaders = {
                     "ngrok-skip-browser-warning": "69420", // Ngrok 경고 무시용 헤더
-                    // 임시 주석임.  ...(token && { 'Authorization': `Bearer ${token}` }) 
+                    ...(token && { 'Authorization': `Bearer ${token}` })
                 };
 
                 const [itemsRes, userRes] = await Promise.all([
                     fetch(`${API_BASE_URL}/api/items`, {
-                         headers: commonHeaders,
-                        credentials: 'include' // 👈 내 쿠키 가져가! (내 물건 조회용)  //나중에 삭제
-                        }),
+                        headers: commonHeaders,
+                        // credentials: 'include'  👈 내 쿠키 가져가! (내 물건 조회용)  
+                    }),
                     fetch(`${API_BASE_URL}/api/members/me`, {
-                         headers: commonHeaders,
-                         credentials: 'include' // 👈 내 쿠키 가져가! (내 프로필 조회용)  // 나중에 삭제
-                         })
+                        headers: commonHeaders,
+                        // credentials: 'include'  👈 내 쿠키 가져가! (내 프로필 조회용)  
+                    })
                 ]);
 
                 // 1. 내 물건 필터링
@@ -117,7 +119,6 @@ export default function MyPage() {
     const handlePassChange = (e) => setPasswords(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
     // 프로필 수정 요청
-    // 프로필 수정 요청
     const handleSubmitProfile = async () => {
         // [A] Mock 모드
         if (IS_MOCK_MODE) {
@@ -128,23 +129,22 @@ export default function MyPage() {
 
         // [B] Real 모드
         try {
+
+            // 0. 토큰 값 불러오기
+            const token = localStorage.getItem('accessToken');
+
             // 1. 보낼 데이터 준비 (이름, 전화번호, 주소)
             const updateData = {
                 name: userInfo.name,
                 phone: userInfo.phone,
                 address: userInfo.address
             };
-
-            // 🚨 중요: 주소(/api/members/me)와 메소드(PUT)는 백엔드 명세에 따라 다를 수 있습니다!
-            // (보통 내 정보 수정은 PUT /api/members/me 를 많이 씁니다.)
             const response = await fetch(`${API_BASE_URL}/api/members/me`, {
-                method: 'PUT', // 혹시 405 에러가 나면 'PATCH'로 바꿔보세요!
-                
-                credentials: 'include', // 👈 필수! 내 쿠키(세션)를 같이 보내야 함
-
+                method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'ngrok-skip-browser-warning': '69420',
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify(updateData)
             });
@@ -152,8 +152,6 @@ export default function MyPage() {
             if (response.ok) {
                 alert("프로필 정보가 성공적으로 수정되었습니다.");
                 setOpenProfileModal(false);
-                // 필요하다면 여기서 새로고침을 한 번 해주셔도 좋습니다.
-                // window.location.reload(); 
             } else {
                 const errorData = await response.json();
                 alert(errorData.message || "프로필 수정 실패");
@@ -193,12 +191,12 @@ export default function MyPage() {
         }
 
         try {
-            // 임시 주석   const token = localStorage.getItem('accessToken');
+            const token = localStorage.getItem('accessToken');
             const response = await fetch(`${API_BASE_URL}/api/members/password`, {
                 method: 'PATCH',  //리소스의 일부만 수정하므로 PATCH 메소드 사용.
                 headers: {
                     'Content-Type': 'application/json',
-                    // 'Authorization': `Bearer ${token}` // 나중에 주석
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
                     currentPassword,
@@ -213,6 +211,7 @@ export default function MyPage() {
                 // [보안 강화] Session Cleanup (강제 로그아웃)
                 // ==========================================
                 localStorage.removeItem('accessToken');
+                localStorage.removeItem('refreshToken');
                 localStorage.removeItem('userEmail');
                 // 필요 시 세션 스토리지나 쿠키도 정리
 
@@ -274,7 +273,18 @@ export default function MyPage() {
                     <Tab icon={<InventoryIcon />} iconPosition="start" label="내 물건 관리" />
                     <Tab icon={<InboxIcon />} iconPosition="start" label="📥 받은 요청 (Owner)" />
                     <Tab icon={<OutboxIcon />} iconPosition="start" label="📤 내 대여 내역 (Renter)" />
+                    <Tab icon={<ChatIcon />} label="💬 채팅 목록" />
+
                 </Tabs>
+                {/* 탭 패널 추가 */}
+                {tabValue === 3 && (
+                    <Fade in={true}>
+                        <Box sx={{ mt: 3 }}>
+                            <ChatList /> {/* 👈 위에서 만든 컴포넌트 삽입 */}
+                        </Box>
+                    </Fade>
+                )}
+
             </Box>
 
             {/* 탭 패널 1: 내 물건 관리 */}
