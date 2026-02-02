@@ -1,16 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+//  카카오맵 & 주소검색 라이브러리 추가
+import { Map, MapMarker } from 'react-kakao-maps-sdk';
+import DaumPostcode from 'react-daum-postcode';
+
 // UI 컴포넌트 import
 import {
   Box, Container, Typography, TextField, Button, Paper, Stack, IconButton,
-  FormControl, InputLabel, Select, MenuItem, InputAdornment
+  FormControl, InputLabel, Select, MenuItem, InputAdornment, Dialog, DialogContent
 } from '@mui/material';
 import PhotoCamera from '@mui/icons-material/PhotoCamera';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-//설정 파일 import
+import SearchIcon from '@mui/icons-material/Search'; // 검색 아이콘
+
+// 설정 파일 import
 import { IS_MOCK_MODE, API_BASE_URL } from '../config';
 
-// ✅ 카테고리 목록 (Home.jsx와 동일하게 맞춤)
+// 카테고리 목록
 const CATEGORIES = [
   { label: '디지털/가전', value: 'DIGITAL' },
   { label: '가구/인테리어', value: 'FURNITURE' },
@@ -29,7 +35,7 @@ const CATEGORIES = [
 export default function ItemRegister({ isLoggedIn }) {
   const navigate = useNavigate();
 
-  // 1. 로그인 체크 (테스트 모드일 때는 로그인 안 해도 넘어가게 할 수도 있음)
+  // 1. 로그인 체크
   useEffect(() => {
     if (!IS_MOCK_MODE && !isLoggedIn) {
       alert("로그인이 필요한 서비스입니다.");
@@ -40,11 +46,20 @@ export default function ItemRegister({ isLoggedIn }) {
   // 2. 입력 폼 상태 관리
   const [values, setValues] = useState({
     title: "",
-    category: "", // [NEW] 카테고리 필수
+    category: "",
     price: "",
-    location: "서울 강남구 강남대로 396", // 기본 주소
     content: "",
+    location: "", // 주소 텍스트
   });
+
+  //  지도 좌표 State (초기값: 강남역)
+  const [coords, setCoords] = useState({
+    lat: 37.497942,
+    lng: 127.027621
+  });
+
+  //  주소 검색 모달 상태
+  const [openPostcode, setOpenPostcode] = useState(false);
 
   const [imageFile, setImageFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -54,7 +69,6 @@ export default function ItemRegister({ isLoggedIn }) {
     setValues({ ...values, [name]: value });
   };
 
-  //이미지 파일 선택 핸들러
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -63,11 +77,43 @@ export default function ItemRegister({ isLoggedIn }) {
     }
   };
 
+  //  주소 검색 완료 핸들러 (Geocoder 사용)
+  const handleCompletePostcode = (data) => {
+    const fullAddress = data.address; // 선택한 주소
+
+    // 1. 주소 텍스트 업데이트
+    setValues({ ...values, location: fullAddress });
+    setOpenPostcode(false); // 모달 닫기
+
+    // 2. 주소 -> 좌표 변환 (Geocoder)
+    // index.html에 스크립트가 있으므로 window.kakao 사용 가능
+    if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
+      const geocoder = new window.kakao.maps.services.Geocoder();
+
+      geocoder.addressSearch(fullAddress, (result, status) => {
+        if (status === window.kakao.maps.services.Status.OK) {
+          const newCoords = {
+            lat: Number(result[0].y), // 위도
+            lng: Number(result[0].x), // 경도
+          };
+          setCoords(newCoords); // 지도 이동
+        }
+      });
+    }
+  };
+
+  //  지도 클릭 시 마커 이동 (미세 조정)
+  const handleMapClick = (_t, mouseEvent) => {
+    setCoords({
+      lat: mouseEvent.latLng.getLat(),
+      lng: mouseEvent.latLng.getLng(),
+    });
+  };
+
   // 🚀 [등록] 핸들러
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 유효성 검사
     if (!values.title || !values.price || !values.content || !values.category) {
       alert("카테고리를 포함한 모든 정보를 입력해주세요!");
       return;
@@ -78,17 +124,18 @@ export default function ItemRegister({ isLoggedIn }) {
       return;
     }
 
-    // 🚩 [A] MOCK 모드
-    if (IS_MOCK_MODE) {
-      console.log("🧪 [Mock Mode] 전송 데이터 확인:", values);
-      setTimeout(() => {
-        alert("🎉 [테스트 모드] 상품 등록 성공!");
-        navigate('/');
-      }, 500);
+    if (!values.location) {
+      alert("거래 장소를 선택해주세요!");
       return;
     }
 
-    // ⭐⭐🚩 [B] REAL 모드 (서버 전송)
+    // MOCK 모드 처리 (생략 가능하나 유지)
+    if (IS_MOCK_MODE) {
+      alert("🎉 [테스트 모드] 상품 등록 성공!");
+      navigate('/');
+      return;
+    }
+
     const token = localStorage.getItem('accessToken');
     if (!token) {
       alert("로그인 정보가 유효하지 않습니다.");
@@ -97,36 +144,29 @@ export default function ItemRegister({ isLoggedIn }) {
 
     try {
       const formData = new FormData();
-
-      // 1. 이미지 파일 추가 (Key: itemImage)
       formData.append("itemImage", imageFile);
 
-      // 2. JSON 데이터 생성 (Key: itemData)
       const itemData = {
         title: values.title,
-        category: values.category, // [NEW] 카테고리
+        category: values.category,
         content: values.content,
         price: parseInt(values.price),
-        location: values.location,
-        address: values.location, // 주소와 위치 동일하게 처리
-        // [임시] 지도 좌표 (강남역 부근) - 나중에 지도 API 붙이면 동적으로 변경
-        latitude: 37.497942,
-        longitude: 127.027621
+
+        // 실제 데이터 전송
+        location: values.location, // 주소 텍스트 (예: 서울 강남구...)
+        address: values.location,
+        latitude: coords.lat,      // 📍 지도에서 선택한 위도
+        longitude: coords.lng      // 📍 지도에서 선택한 경도
       };
 
-      // 3. JSON을 Blob으로 변환하여 추가 (Content-Type 지정 필수)
       const jsonBlob = new Blob([JSON.stringify(itemData)], { type: "application/json" });
       formData.append("itemData", jsonBlob);
-
-      console.log("📡 상품 등록 요청 보냄...");
 
       const response = await fetch(`${API_BASE_URL}/api/items`, {
         method: 'POST',
         headers: {
-          // 👇 토큰값
           'Authorization': `Bearer ${token}`,
           "ngrok-skip-browser-warning": "69420",
-          // 주의: multipart/form-data는 Content-Type 헤더를 직접 설정하면 안 됨 (브라우저가 자동 설정)
         },
         body: formData,
       });
@@ -144,9 +184,10 @@ export default function ItemRegister({ isLoggedIn }) {
       alert("서버와 연결할 수 없습니다.");
     }
   };
+
   return (
     <Container maxWidth="sm" sx={{ py: 4, pb: 10 }}>
-      {/* 상단 헤더 */}
+      {/* 헤더 */}
       <Stack direction="row" alignItems="center" sx={{ mb: 3 }}>
         <IconButton onClick={() => navigate(-1)}>
           <ArrowBackIcon />
@@ -159,7 +200,7 @@ export default function ItemRegister({ isLoggedIn }) {
       <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
         <Box component="form" onSubmit={handleSubmit}>
 
-          {/* 1. 이미지 업로드 영역 */}
+          {/* 1. 이미지 업로드 */}
           <Box sx={{ mb: 4, textAlign: 'center' }}>
             <input
               accept="image/*"
@@ -193,9 +234,8 @@ export default function ItemRegister({ isLoggedIn }) {
             </label>
           </Box>
 
-          {/* 2. 입력 필드 영역 */}
+          {/* 2. 입력 필드 */}
           <Stack spacing={3}>
-            {/* 제목 */}
             <TextField
               label="글 제목"
               name="title"
@@ -206,7 +246,6 @@ export default function ItemRegister({ isLoggedIn }) {
               placeholder="예: 맥북 프로 M3 빌려드려요"
             />
 
-            {/* 카테고리 (필수) */}
             <FormControl fullWidth required>
               <InputLabel>카테고리</InputLabel>
               <Select
@@ -223,7 +262,6 @@ export default function ItemRegister({ isLoggedIn }) {
               </Select>
             </FormControl>
 
-            {/* 가격 및 장소 */}
             <Stack direction="row" spacing={2}>
               <TextField
                 label="시간당 가격"
@@ -239,17 +277,54 @@ export default function ItemRegister({ isLoggedIn }) {
               />
             </Stack>
 
-            <TextField
-              label="거래 희망 장소"
-              name="location"
-              fullWidth
-              required
-              value={values.location}
-              onChange={handleChange}
-              helperText="* 실제 지도 좌표는 강남역으로 고정됩니다 (추후 업데이트 예정)"
-            />
+            {/*  [지도 섹션] 주소 검색 및 지도 표시 */}
+            <Box>
+              {/* 1. 주소 표시 인풋 (클릭해도 검색됨) */}
+              <TextField
+                label="거래 희망 장소"
+                name="location"
+                fullWidth
+                required
+                value={values.location}
+                InputProps={{
+                  readOnly: true, // 직접 입력 방지
+                }}
+                placeholder="주소 검색 버튼을 눌러주세요"
+                onClick={() => setOpenPostcode(true)} // 인풋 클릭해도 검색창 열림
+                sx={{ mb: 1, cursor: 'pointer' }}
+              />
 
-            {/* 내용 */}
+              {/* 2. 주소 찾기 버튼 (⭐ 한 줄 꽉 차게 변경!) */}
+              <Button
+                variant="outlined"
+                fullWidth
+                onClick={() => setOpenPostcode(true)}
+                startIcon={<SearchIcon />}
+                sx={{ mb: 2, py: 1.5, fontWeight: 'bold', borderRadius: 2 }}
+              >
+                주소 검색하기
+              </Button>
+
+              {/* 3. 지도 컴포넌트 */}
+              <Box sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid #ddd' }}>
+                <Map
+                  center={coords}
+                  style={{ width: "100%", height: "250px" }}
+                  level={3}
+                  onClick={handleMapClick}
+                >
+                  <MapMarker position={coords}>
+                    <div style={{ padding: "5px", color: "#000", fontSize: '12px' }}>
+                      거래 위치📍
+                    </div>
+                  </MapMarker>
+                </Map>
+              </Box>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                * 지도상의 위치를 클릭하면 거래 좌표를 미세 조정할 수 있습니다.
+              </Typography>
+            </Box>
+
             <TextField
               label="자세한 설명"
               name="content"
@@ -262,7 +337,6 @@ export default function ItemRegister({ isLoggedIn }) {
               placeholder="물건의 상태, 거래 가능한 시간 등을 자세히 적어주세요."
             />
 
-            {/* 등록 버튼 */}
             <Button
               type="submit"
               variant="contained"
@@ -273,6 +347,22 @@ export default function ItemRegister({ isLoggedIn }) {
             </Button>
           </Stack>
         </Box>
+
+        {/*  [주소 검색 모달] DaumPostcode */}
+        <Dialog
+          open={openPostcode}
+          onClose={() => setOpenPostcode(false)}
+          fullWidth
+          maxWidth="sm"
+        >
+          <DialogContent sx={{ p: 0, height: '500px' }}>
+            <DaumPostcode
+              onComplete={handleCompletePostcode}
+              style={{ height: '100%' }}
+            />
+          </DialogContent>
+        </Dialog>
+
       </Paper>
     </Container>
   );
