@@ -14,6 +14,7 @@
 * **프로젝트 목표:**
   * 단순 CRUD를 넘어선 **복합 데이터 처리(File/JSON)** 로직 구현
   * **WebSocket**을 활용한 실시간 양방향 통신 시스템 구축
+  * **Kakao Maps API**를 활용한 위치 기반 서비스(LBS) 구현
   * **보안(Security)** 및 **사용자 경험(UX)**을 고려한 최적화
 
 <br>
@@ -23,6 +24,9 @@
 ### Frontend
 <img src="https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black"> <img src="https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black"> <img src="https://img.shields.io/badge/MUI%20v6-007FFF?style=for-the-badge&logo=mui&logoColor=white">
 <img src="https://img.shields.io/badge/React%20Router-CA4245?style=for-the-badge&logo=reactrouter&logoColor=white"> <img src="https://img.shields.io/badge/React%20Hook%20Form-EC5990?style=for-the-badge&logo=reacthookform&logoColor=white"> <img src="https://img.shields.io/badge/Day.js-FB6052?style=for-the-badge&logo=dayjs&logoColor=white">
+
+### Map & Location (New)
+<img src="https://img.shields.io/badge/Kakao%20Maps-FFCD00?style=for-the-badge&logo=kakao&logoColor=black"> <img src="https://img.shields.io/badge/Daum%20Postcode-000000?style=for-the-badge&logo=kakao&logoColor=white"> <img src="https://img.shields.io/badge/Geolocation%20API-4285F4?style=for-the-badge&logo=googlemaps&logoColor=white">
 
 ### Network & Communication
 <img src="https://img.shields.io/badge/WebSocket-010101?style=for-the-badge&logo=socket.io&logoColor=white"> <img src="https://img.shields.io/badge/StompJS-000000?style=for-the-badge&logo=stomp&logoColor=white"> <img src="https://img.shields.io/badge/Axios/Fetch-5A29E4?style=for-the-badge&logo=axios&logoColor=white">
@@ -44,12 +48,18 @@
 - **데이터 직렬화 (Serialization):** Spring Boot의 `@RequestPart` 규격을 준수하기 위해 JSON 데이터를 `Blob` 타입으로 변환하여 전송합니다.
 - **권한 방어:** 클라이언트(Owner Check)와 서버(Session Check)의 이중 검증을 통해 인가되지 않은 수정/삭제 요청을 원천 차단했습니다.
 
-### C. 💬 실시간 1:1 채팅 (Real-time Chat) - [NEW ✨]
+### C. 🗺️ 위치 기반 서비스 (Location Service) - [NEW 🚀]
+- **내 주변 찾기 (LBS):** 브라우저의 `Geolocation API`를 활용해 사용자 위치를 파악하고, 반경 5km 이내의 물품만 필터링(Haversine 공식 활용)하여 보여줍니다.
+- **지도 시각화:** `Kakao Maps SDK`를 연동하여 리스트 뷰와 지도 뷰(Map View)를 토글할 수 있으며, 마커를 통해 직관적으로 매물 위치를 확인합니다.
+- **주소 검색 시스템:** 물품 등록 시 `Daum Postcode API`로 정확한 주소를 검색하고, Geocoder를 통해 좌표(위도/경도)로 자동 변환하여 DB에 저장합니다.
+- **길찾기 연동:** 상세 페이지의 미니맵 마커 클릭 시 카카오맵(Web) 길찾기 페이지로 리다이렉트되어 사용자 편의성을 높였습니다.
+
+### D. 💬 실시간 1:1 채팅 (Real-time Chat)
 - **WebSocket & Stomp:** `SockJS`와 `StompJS`를 도입하여 신뢰성 있는 양방향 통신 채널을 구축했습니다.
 - **Pub/Sub 아키텍처:** `/topic/chat/room/{id}` 경로를 구독하여 메시지를 지연 없이 실시간 수신합니다.
 - **연결 보안:** 소켓 핸드쉐이크 시 헤더(`connectHeaders`)에 인증 토큰을 실어 보내 비인가 사용자의 접근을 막았습니다.
 
-### D. 👤 사용자 경험 최적화 (UX Optimization)
+### E. 👤 사용자 경험 최적화 (UX Optimization)
 - **병렬 데이터 로딩:** 마이페이지 진입 시 `Promise.all`을 사용하여 프로필과 상품 목록을 동시에 호출, 로딩 속도를 **50% 이상 단축**했습니다.
 - **통합 탭 인터페이스:** [내 물건], [받은 요청], [대여 내역], [채팅 목록]을 하나의 페이지에서 직관적으로 관리할 수 있도록 구현했습니다.
 
@@ -64,8 +74,21 @@
 ## 5. 📂 프로젝트 구조 (Directory Structure)
 ```bash
 src
-├── components  # 재사용 가능한 UI 컴포넌트 (ItemCard, ChatRoom 등)
-├── pages       # 주요 페이지 (Home, Login, ItemDetail, MyPage 등)
-├── api         # Axios/Fetch API 모듈 관리
-├── hooks       # Custom Hooks
-└── utils       # 공통 유틸리티 함수 (날짜 변환 등)
+├── components          # 재사용 가능한 UI 컴포넌트
+│   ├── ItemCard.jsx        # 상품 카드 (메인/검색)
+│   ├── RentalModal.jsx     # 대여 신청 및 계산 모달
+│   ├── ChatList.jsx        # 채팅방 목록 아이템
+│   ├── ReceivedRequests.jsx # 받은 요청 관리 (수락/거절)
+│   └── SentRequests.jsx     # 보낸 요청 관리 (상태 확인)
+├── mocks               # 프론트엔드 독립 테스트 데이터
+│   └── mockData.js         # 가상 상품/유저/거래 데이터
+├── pages               # 라우팅 페이지 (Screen)
+│   ├── Home.jsx            # 메인 (위치 기반 필터링 & 지도)
+│   ├── ItemRegister.jsx    # 상품 등록 (주소 검색 & 마커 설정)
+│   ├── ItemDetail.jsx      # 상품 상세 (미니맵 & 길찾기)
+│   ├── ItemEdit.jsx        # 상품 수정
+│   ├── ChatRoom.jsx        # 1:1 실시간 채팅방
+│   ├── MyPage.jsx          # 마이페이지 (탭 관리)
+│   └── Login.jsx / Signup.jsx
+├── App.jsx             # 라우터(Router) 및 전역 레이아웃 설정
+└── config.js           # API Base URL 및 모드 설정 (Mock/Real)
