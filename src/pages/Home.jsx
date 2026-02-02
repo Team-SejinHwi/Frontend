@@ -1,22 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Map, MapMarker, CustomOverlayMap } from 'react-kakao-maps-sdk'; //  지도 라이브러리
+
 // UI 구성을 위한 Material UI 컴포넌트들
 import {
   AppBar, Toolbar, Button, Typography, Box, Container, Stack, Paper,
-  Grid, Fab, TextField, InputAdornment, Chip
+  Grid, Fab, TextField, InputAdornment, Chip, ToggleButton, ToggleButtonGroup,
+  CircularProgress
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
+import MyLocationIcon from '@mui/icons-material/MyLocation'; // 내 위치 아이콘
+import MapIcon from '@mui/icons-material/Map'; // 지도 아이콘
+import ListIcon from '@mui/icons-material/List'; // 리스트 아이콘
 
-// 새로 만든 가짜 데이터와 컴포넌트 & 설정 import
+// 데이터 및 설정 import
 import ItemCard from '../components/ItemCard';
 import { mockItems } from '../mocks/mockData';
 import { IS_MOCK_MODE, API_BASE_URL } from '../config';
 
 const MAIN_IMAGE_URL = "https://i.postimg.cc/MHNP5WB5/image.jpg";
 
-// ✅ [v.01.30] 카테고리 목록 정의 (명세서 기반 + 확장)
-// 백엔드 API가 기대하는 value 값과 화면에 보여줄 label을 매핑해둔 상수 배열.
+// 카테고리 목록
 const CATEGORIES = [
   { label: '전체', value: '' },
   { label: '디지털/가전', value: 'DIGITAL' },
@@ -33,138 +38,203 @@ const CATEGORIES = [
   { label: '기타', value: 'ETC' },
 ];
 
+// 🧮 [Helper] 두 좌표 사이의 거리 계산 함수 (Haversine Formula)
+// 단위: km
+function getDistanceFromLatLonInKm(lat1, lng1, lat2, lng2) {
+  const R = 6371; // 지구 반지름 (km)
+  const dLat = deg2rad(lat2 - lat1);
+  const dLng = deg2rad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function deg2rad(deg) {
+  return deg * (Math.PI / 180);
+}
+
 export default function Home({ isLoggedIn, setIsLoggedIn }) {
-  // 페이지 이동을 도와주는 Hook (예: 상품 클릭 시 상세페이지로 이동)
   const navigate = useNavigate();
 
   // =================================================================
   // 1. 상태 관리 (State Management)
   // =================================================================
-  // 🚀 상품 리스트를 담을 상태 (화면에 뿌려질 데이터 원본)
   const [items, setItems] = useState([]);
-
-  // 🔍 [검색 필터 상태]
-  // keyword: 검색창에 입력한 텍스트
-  // category: 현재 선택된 카테고리 값 (예: 'DIGITAL')
   const [keyword, setKeyword] = useState('');
   const [category, setCategory] = useState('');
 
-  // 사용자 정보 가져오기
+  //  뷰 모드 (LIST: 리스트 보기, MAP: 지도 보기)
+  const [viewMode, setViewMode] = useState('LIST');
+
+  // 내 위치 및 필터 상태
+  // active: 내 주변 필터 활성화 여부
+  // lat, lng: 내 현재 좌표
+  const [locationFilter, setLocationFilter] = useState({
+    active: false,
+    lat: null, // 초기값 null
+    lng: null
+  });
+
+  const [loading, setLoading] = useState(false); // 로딩 상태
+
   const myEmail = localStorage.getItem('userEmail') || '';
   const myName = localStorage.getItem('userName') || myEmail.split('@')[0] || '사용자';
 
   // =================================================================
-  // 2. 데이터 로드 함수 (핵심 로직)
+  // 2. 데이터 로드 함수 (핵심 로직 - 위치 기반 필터링 추가)
   // =================================================================
+  const fetchItems = (
+    targetCategory = category, 
+    targetKeyword = keyword, 
+    targetLoc = locationFilter
+  ) => {
+    setLoading(true);
 
-  // 이 함수는 '현재 상태' 또는 '선택된 카테고리'를 기준으로 API를 호출.
-  // 💡 targetCategory 매개변수가 필요한 이유:
-  // React의 setCategory는 비동기로 작동하므로, 버튼을 누르자마자 category 상태가 변하지 않을 수 있다.
-  // 그래서 클릭한 그 값을 인자로 직접 넘겨받아 검색에 사용.
-  const fetchItems = (targetCategory = category) => {
-
-    // [A] Mock 모드 (백엔드 없이 프론트엔드 혼자 테스트할 때)
-
+    // [A] Mock 모드
     if (IS_MOCK_MODE) {
-      console.log(`🛠️ [Mock] 검색 - 카테고리: ${targetCategory}, 키워드: ${keyword}`);
-      let filtered = mockItems;
-      // 카테고리가 선택되어 있다면 필터링
-      if (targetCategory) filtered = filtered.filter(i => i.category === targetCategory);
-      // 검색어가 있다면 제목에 포함되어 있는지 확인
-      if (keyword) filtered = filtered.filter(i => i.title.includes(keyword));
-      setItems(filtered);
+      setTimeout(() => { // 로딩 느낌을 위해 0.3초 지연
+        let filtered = mockItems;
+
+        // 1. 카테고리 필터
+        if (targetCategory) filtered = filtered.filter(i => i.category === targetCategory);
+        // 2. 검색어 필터
+        if (targetKeyword) filtered = filtered.filter(i => i.title.includes(targetKeyword));
+        
+        //  3. 위치 기반 필터 (내 주변 5km)
+        if (targetLoc.active && targetLoc.lat && targetLoc.lng) {
+            console.log("📍 [Mock] 내 주변 5km 필터링 시작:", targetLoc);
+            filtered = filtered.filter(item => {
+                // 좌표가 없는 아이템은 제외
+                if (!item.tradeLatitude || !item.tradeLongitude) return false;
+                
+                const dist = getDistanceFromLatLonInKm(
+                    targetLoc.lat, targetLoc.lng,
+                    item.tradeLatitude, item.tradeLongitude
+                );
+                return dist <= 5; // 5km 이내만 통과
+            });
+        }
+
+        setItems(filtered);
+        setLoading(false);
+      }, 300);
       return;
     }
 
-
-    // [B] Real 모드 (실제 백엔드 서버와 통신)
-    // URLSearchParams: 쿼리 스트링(?key=value)을 쉽게 만들어주는 JS 내장 객체
+    // [B] Real 모드
     const queryParams = new URLSearchParams();
     if (targetCategory) queryParams.append('category', targetCategory);
-    if (keyword) queryParams.append('keyword', keyword);
+    if (targetKeyword) queryParams.append('keyword', targetKeyword);
+    
+    //  위치 필터 파라미터 추가
+    if (targetLoc.active && targetLoc.lat && targetLoc.lng) {
+        queryParams.append('lat', targetLoc.lat);
+        queryParams.append('lng', targetLoc.lng);
+        queryParams.append('radius', 5); // 5km 고정
+    }
 
-    // 완성된 URL 예시: http://localhost:8080/api/items?category=DIGITAL&keyword=맥북
-    const requestUrl = `${API_BASE_URL}/api/items?${queryParams.toString()}`;
-    console.log("📡 상품 조회 요청:", requestUrl);
-
-    fetch(requestUrl, {
-      method: 'GET',
-      headers: {
-        "Content-Type": "application/json",
-        "ngrok-skip-browser-warning": "69420", // ngrok 사용 시 보안 경고 무시 헤더
-      },
+    fetch(`${API_BASE_URL}/api/items?${queryParams.toString()}`, {
+      headers: { "ngrok-skip-browser-warning": "69420" }
     })
-      .then(res => {
-        if (!res.ok) throw new Error(`서버 응답 오류: ${res.status}`);
-        return res.json();
-      })
+      .then(res => res.json())
       .then(data => {
-        console.log("📥 받아온 상품 목록:", data);
-        // 서버 응답 형태에 따라 유연하게 데이터 처리 (배열인지 객체인지 확인)
-        if (Array.isArray(data)) {
-          setItems(data);
-        } else if (data.data && Array.isArray(data.data)) {
-          setItems(data.data);
-        } else {
-          setItems([]);
-        }
+        if (Array.isArray(data)) setItems(data);
+        else if (data.data && Array.isArray(data.data)) setItems(data.data);
+        else setItems([]);
+        setLoading(false);
       })
       .catch(err => {
-        console.error("🚨 상품 로드 실패:", err);
-        setItems([]); // 에러 나면 빈 목록 보여줌
+        console.error(err);
+        setItems([]);
+        setLoading(false);
       });
   };
 
-  // 초기 로딩 (Component Mount 시점)
-  // 화면이 처음 켜졌을 때 딱 한 번 실행되어 전체 상품 목록을 가져온다.
   useEffect(() => {
     fetchItems();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); 
+    // eslint-disable-next-line
+  }, []);
 
   // =================================================================
   // 3. 핸들러 (Event Handlers)
   // =================================================================
+  
+  //  내 주변 찾기 버튼 클릭
+  const handleNearMeClick = () => {
+    // 이미 활성화 상태라면 -> 필터 해제
+    if (locationFilter.active) {
+        const resetLoc = { active: false, lat: null, lng: null };
+        setLocationFilter(resetLoc);
+        fetchItems(category, keyword, resetLoc);
+        return;
+    }
+
+    // 비활성화 상태라면 -> GPS로 위치 잡고 필터 적용
+    if (!navigator.geolocation) {
+        alert("브라우저가 위치 정보를 지원하지 않습니다.");
+        return;
+    }
+
+    setLoading(true); // 위치 잡는 동안 로딩
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            const newLoc = {
+                active: true,
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude
+            };
+            
+            // 1. 상태 업데이트
+            setLocationFilter(newLoc);
+            // 2. 지도 뷰로 자동 전환 (사용자 경험 향상)
+            setViewMode('MAP');
+            // 3. 데이터 다시 가져오기
+            fetchItems(category, keyword, newLoc);
+            
+            alert("📍 내 주변 5km 상품을 검색합니다.");
+        },
+        (err) => {
+            console.error(err);
+            alert("위치 정보를 가져올 수 없습니다. (위치 권한을 허용해주세요)");
+            setLoading(false);
+        }
+    );
+  };
+
+  // 카테고리 클릭
+  const handleCategoryClick = (newCategory) => {
+    setCategory(newCategory);
+    fetchItems(newCategory, keyword, locationFilter);
+  };
+
+  // 검색
+  const handleSearch = () => {
+    fetchItems(category, keyword, locationFilter);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') handleSearch();
+  };
+
   const handleLogout = () => {
     setIsLoggedIn(false);
-    // 보안을 위해 로컬 스토리지에 저장된 인증 정보 싹 지우기
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-
+    localStorage.clear();
     alert("로그아웃 되었습니다.");
     navigate('/');
-  };
-
-  // [UI 개선] 카테고리 칩 클릭 시 실행
-  // 1. setCategory로 화면의 버튼 색을 바꾸고 (UI 업데이트)
-  // 2. fetchItems를 바로 호출해서 데이터를 가져옴 (데이터 업데이트)
-  const handleCategoryClick = (newCategory) => {
-    setCategory(newCategory); 
-    fetchItems(newCategory);  
-  };
-
-  // 검색창에서 엔터(Enter) 키를 눌렀을 때 검색 실행
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      fetchItems();
-    }
   };
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#f9f9f9' }}>
 
-      {/* --- 네비게이션 바 (상단 메뉴) --- */}
+      {/* --- 네비게이션 바 --- */}
       <AppBar position="static" color="default" elevation={1} sx={{ bgcolor: 'white' }}>
         <Toolbar sx={{ justifyContent: 'space-between' }}>
-          {/* 로고 클릭 시 홈으로 이동 */}
           <Typography variant="h6" sx={{ fontWeight: 'bold', cursor: 'pointer', color: '#333' }} onClick={() => navigate('/')}>
             Re:Borrow
           </Typography>
-
-          {/* 로그인 상태에 따라 다른 버튼 노출 */}
           {isLoggedIn ? (
             <Stack direction="row" spacing={1} alignItems="center">
               <Typography variant="body2" onClick={() => navigate('/mypage')} sx={{ fontWeight: 'bold', color: 'primary.main', cursor: 'pointer', textDecoration: 'underline' }}>
@@ -182,12 +252,11 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
         </Toolbar>
       </AppBar>
 
-      {/* --- 메인 배너 이미지 --- */}
+      {/* --- 메인 배너 --- */}
       <Box sx={{
-        position: 'relative', width: '100%', height: '300px',
+        position: 'relative', width: '100%', height: '250px',
         backgroundImage: `url(${MAIN_IMAGE_URL})`, backgroundSize: 'cover', backgroundPosition: 'center',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        // 이미지 위에 검은색 반투명 레이어를 씌워서 글씨가 잘 보이게 함
         '&::before': { content: '""', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)' }
       }}>
         <Container maxWidth="md" sx={{ position: 'relative', zIndex: 1, textAlign: 'center', color: 'white' }}>
@@ -200,115 +269,176 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
         </Container>
       </Box>
 
-      {/* --- 🔍 검색 및 카테고리 섹션 --- */}
-      {/* mt: 4를 주어 배너와 겹치지 않고 아래로 떨어지게 배치 */}
-      <Container sx={{ mt: 4, mb: 4, position: 'relative', zIndex: 2 }}>
+      {/* --- 🔍 컨트롤 타워 (검색, 필터, 뷰 모드) --- */}
+      <Container sx={{ mt: -4, mb: 4, position: 'relative', zIndex: 2 }}>
         <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
           <Stack spacing={2}>
-
-            {/* 1. 검색바 영역 */}
-            <Stack direction="row" spacing={1}>
-              <TextField
-                fullWidth
-                placeholder="어떤 물건을 찾으시나요?"
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)} // 입력할 때마다 state 업데이트
-                onKeyPress={handleKeyPress} // 엔터키 감지
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon color="action" />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{ bgcolor: 'white' }}
-              />
-              <Button
-                variant="contained"
-                size="large"
-                onClick={() => fetchItems()} // 버튼 클릭 시 검색
-                sx={{ fontWeight: 'bold', width: '100px' }}
-              >
-                검색
-              </Button>
+            
+            {/* 1. 검색바 & 내주변 버튼 */}
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                <TextField
+                    fullWidth
+                    placeholder="어떤 물건을 찾으시나요?"
+                    value={keyword}
+                    onChange={(e) => setKeyword(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    InputProps={{
+                        startAdornment: <InputAdornment position="start"><SearchIcon color="action" /></InputAdornment>,
+                    }}
+                    sx={{ bgcolor: 'white' }}
+                />
+                
+                {/* 내 주변 찾기 버튼 */}
+                <Button 
+                    variant={locationFilter.active ? "contained" : "outlined"} 
+                    color={locationFilter.active ? "success" : "primary"}
+                    onClick={handleNearMeClick}
+                    startIcon={<MyLocationIcon />}
+                    sx={{ minWidth: '140px', fontWeight: 'bold', whiteSpace: 'nowrap' }}
+                >
+                    {locationFilter.active ? "필터 해제" : "내 주변 찾기"}
+                </Button>
+                
+                <Button
+                    variant="contained"
+                    onClick={handleSearch}
+                    sx={{ fontWeight: 'bold', minWidth: '80px' }}
+                >
+                    검색
+                </Button>
             </Stack>
 
-            {/* 2. 카테고리 칩 (가로 스크롤 UI) */}
-            <Box sx={{
-              display: 'flex',
-              gap: 1,
-              overflowX: 'auto', // 내용이 넘치면 가로 스크롤 생성
-              pb: 1, // 스크롤바와 내용 사이 여백
-              '::-webkit-scrollbar': { height: '6px' }, // 스크롤바 커스텀 디자인
-              '::-webkit-scrollbar-thumb': { backgroundColor: '#ddd', borderRadius: '3px' }
-            }}>
-              {/* CATEGORIES 배열을 돌면서 Chip(버튼) 생성 */}
-              {CATEGORIES.map((cat) => (
-                <Chip
-                  key={cat.value}
-                  label={cat.label}
-                  clickable
-                  // 현재 선택된 카테고리면 파란색(primary), 아니면 회색(default)
-                  color={category === cat.value ? "primary" : "default"}
-                  variant={category === cat.value ? "filled" : "outlined"}
-                  // 클릭 시 상태 변경 및 즉시 검색 실행
-                  onClick={() => handleCategoryClick(cat.value)}
-                  sx={{
-                    fontWeight: category === cat.value ? 'bold' : 'normal',
-                    fontSize: '0.9rem',
-                    padding: '18px 5px'
-                  }}
-                />
-              ))}
-            </Box>
+            {/* 2. 카테고리 & 뷰 모드 토글 */}
+            <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
+                {/* 카테고리 스크롤 영역 */}
+                <Box sx={{
+                    display: 'flex', gap: 1, overflowX: 'auto', flex: 1, pb: 0.5,
+                    '::-webkit-scrollbar': { height: '4px' },
+                    '::-webkit-scrollbar-thumb': { backgroundColor: '#ddd', borderRadius: '3px' }
+                }}>
+                    {CATEGORIES.map((cat) => (
+                        <Chip
+                            key={cat.value}
+                            label={cat.label}
+                            clickable
+                            color={category === cat.value ? "primary" : "default"}
+                            variant={category === cat.value ? "filled" : "outlined"}
+                            onClick={() => handleCategoryClick(cat.value)}
+                        />
+                    ))}
+                </Box>
 
+                {/*  리스트/지도 뷰 토글 버튼 */}
+                <ToggleButtonGroup
+                    value={viewMode}
+                    exclusive
+                    onChange={(e, newMode) => { if (newMode) setViewMode(newMode); }}
+                    size="small"
+                    color="primary"
+                >
+                    <ToggleButton value="LIST" sx={{ fontWeight: 'bold' }}>
+                        <ListIcon sx={{ mr: 0.5 }} /> 리스트
+                    </ToggleButton>
+                    <ToggleButton value="MAP" sx={{ fontWeight: 'bold' }}>
+                        <MapIcon sx={{ mr: 0.5 }} /> 지도
+                    </ToggleButton>
+                </ToggleButtonGroup>
+            </Stack>
           </Stack>
         </Paper>
       </Container>
 
-      {/* --- 📦 상품 리스트 표시 영역 --- */}
-      <Container sx={{ py: 2, pb: 10 }}>
-        {/* 현재 보고 있는 목록의 제목 (카테고리명 or 검색어) */}
+      {/* --- 📦 콘텐츠 영역 (리스트 or 지도) --- */}
+      <Container sx={{ py: 2, pb: 10, flex: 1 }}>
         <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 3 }}>
           {category ? `📂 ${CATEGORIES.find(c => c.value === category)?.label}` : '🔥 전체 상품'}
           {keyword && ` / 검색어: "${keyword}"`}
+          {locationFilter.active && <Chip label="📍 내 주변 5km" color="success" size="small" sx={{ ml: 1 }} />}
         </Typography>
 
-        {items.length === 0 ? (
-          // 상품이 없을 때 표시할 UI
-          <Box sx={{ textAlign: 'center', py: 10 }}>
-            <Typography variant="h6" color="text.secondary">등록된 상품이 없습니다.</Typography>
-          </Box>
+        {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>
+        ) : items.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 10 }}>
+                <Typography variant="h6" color="text.secondary">조건에 맞는 상품이 없습니다.</Typography>
+                {locationFilter.active && <Typography variant="body2" color="text.secondary">반경을 넓히거나 다른 지역에서 검색해보세요.</Typography>}
+            </Box>
         ) : (
-          // 상품이 있을 때 Grid로 나열
-          <Grid container spacing={3}>
-            {items.map((item) => (
-              <Grid
-                item
-                key={item.itemId || item.id}
-                xs={12} sm={6} md={3} // 반응형 그리드 (모바일 1개, 태블릿 2개, PC 4개)
-              >
-                {/* 개별 상품 카드 컴포넌트 호출 */}
-                <ItemCard item={item} />
-              </Grid>
-            ))}
-          </Grid>
+            //  뷰 모드에 따라 분기 처리
+            viewMode === 'LIST' ? (
+                // [A] 리스트 뷰 (기존 Grid)
+                <Grid container spacing={3}>
+                    {items.map((item) => (
+                        <Grid item key={item.itemId || item.id} xs={12} sm={6} md={3}>
+                            <ItemCard item={item} />
+                        </Grid>
+                    ))}
+                </Grid>
+            ) : (
+                // [B] 지도 뷰 (카카오맵)
+                <Box sx={{ width: '100%', height: '500px', borderRadius: 3, overflow: 'hidden', border: '1px solid #ddd' }}>
+                    <Map
+                        // 지도의 중심좌표 (내 위치가 있으면 내 위치, 없으면 첫 번째 아이템 위치, 다 없으면 강남역)
+                        center={
+                            locationFilter.active && locationFilter.lat 
+                            ? { lat: locationFilter.lat, lng: locationFilter.lng } 
+                            : (items[0]?.tradeLatitude 
+                                ? { lat: items[0].tradeLatitude, lng: items[0].tradeLongitude }
+                                : { lat: 37.497942, lng: 127.027621 })
+                        }
+                        style={{ width: "100%", height: "100%" }}
+                        level={locationFilter.active ? 6 : 8} // 내 주변이면 좀 더 확대
+                    >
+                        {/* 내 위치 마커 (파란색) */}
+                        {locationFilter.active && locationFilter.lat && (
+                            <MapMarker
+                                position={{ lat: locationFilter.lat, lng: locationFilter.lng }}
+                                image={{
+                                    src: "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png", // 빨간 마커 (내 위치)
+                                    size: { width: 64, height: 69 }, 
+                                    options: { offset: { x: 27, y: 69 } }
+                                }}
+                            />
+                        )}
+
+                        {/* 상품 마커들 (노란색) */}
+                        {items.map((item) => (
+                            item.tradeLatitude && item.tradeLongitude && (
+                                <MapMarker
+                                    key={item.itemId}
+                                    position={{ lat: item.tradeLatitude, lng: item.tradeLongitude }}
+                                    onClick={() => navigate(`/items/${item.itemId}`)} // 마커 클릭 시 상세 페이지로
+                                    image={{
+                                        src: "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png", // 별 마커 (상품)
+                                        size: { width: 24, height: 35 }
+                                    }}
+                                >
+                                    {/* 마커 위 툴팁 (상품명) */}
+                                    <div style={{ padding: "5px", color: "#000", fontSize: '12px', borderRadius:'4px' }}>
+                                        {item.title} <br/>
+                                        <span style={{ fontWeight:'bold', color:'blue' }}>{item.price?.toLocaleString()}원</span>
+                                    </div>
+                                </MapMarker>
+                            )
+                        ))}
+                    </Map>
+                </Box>
+            )
         )}
       </Container>
 
-      {/* --- 푸터 (하단 정보) --- */}
+      {/* --- 푸터 --- */}
       <Box component="footer" sx={{ py: 3, mt: 'auto', bgcolor: '#f1f1f1', textAlign: 'center' }}>
         <Typography variant="body2" color="text.secondary">© 2026 Re:Borrow</Typography>
       </Box>
 
-      {/* --- 플로팅 버튼 (글쓰기) --- */}
-      {/* 로그인한 사용자에게만 보임 */}
+      {/* --- 글쓰기 버튼 --- */}
       {isLoggedIn && (
         <Fab
           color="primary"
           aria-label="add"
           sx={{ position: 'fixed', bottom: 30, right: 30, width: 60, height: 60 }}
-          onClick={() => navigate('/products/new')} // 글쓰기 페이지로 이동
+          onClick={() => navigate('/products/new')}
         >
           <AddIcon />
         </Fab>
