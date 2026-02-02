@@ -9,29 +9,32 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 // 페이지 이동을 위한 Hook과 RouterLink 컴포넌트
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 
+// ✅ config에서 기본 URL 가져오기 (Login.jsx와 통일)
+import { API_BASE_URL } from '../config';
+
 export default function Signup() {
-  // [Hook 1] useNavigate: 회원가입 완료 후 로그인 페이지로 이동시키기 위해 사용합니다.
+  // [Hook 1] useNavigate: 회원가입 완료 후 로그인 페이지로 이동시키기 위해 사용.
   const navigate = useNavigate();
 
   // [Hook 2] useForm 설정
-  // mode: 'onChange' -> 사용자가 키보드를 칠 때마다 실시간으로 유효성 검사를 수행합니다.
+  // mode: 'onChange' -> 사용자가 키보드를 칠 때마다 실시간으로 유효성 검사를 수행.
   // (기본값은 'onSubmit'이라 제출 버튼을 눌러야 검사하지만, 회원가입은 실시간 피드백이 중요하므로 변경)
   const { register, handleSubmit, watch, formState: { errors } } = useForm({
     mode: 'onChange'
   });
 
   // [중요 로직] 비밀번호 일치 확인 기능
-  // watch("password"): "password"라는 이름의 입력 필드 값을 실시간으로 감시(관찰)합니다.
-  // 이 값은 나중에 '비밀번호 확인' 필드의 유효성 검사 함수(validate)에서 비교값으로 쓰입니다.
+  // watch("password"): "password"라는 이름의 입력 필드 값을 실시간으로 감시(관찰).
+  // 이 값은 나중에 '비밀번호 확인' 필드의 유효성 검사 함수(validate)에서 비교값으로 쓰임.
   const password = watch("password");
 
-  // 🚀 [핸들러] 폼 제출 시 실행되는 함수 (API 요청 로직)
-  // handleSubmit이 유효성 검사를 통과시킨 데이터를 인자(data)로 넘겨줍니다.
+  // 🚀 [핸들러] 폼 제출 시 실행되는 함수 (API 요청 로직).
+  // handleSubmit이 유효성 검사를 통과시킨 데이터를 인자(data)로 넘겨줌.
   const onSubmit = async (data) => {
     // 1. 데이터 정제 (Spread Operator 사용)
-    // data 객체에는 { email, password, confirmPassword, name... } 등이 다 들어있습니다.
-    // 하지만 백엔드 API는 보통 '비밀번호 확인(confirmPassword)' 값은 필요로 하지 않습니다.
-    // 따라서 confirmPassword는 따로 빼고, 나머지 필요한 정보만 rest 문법(...submitData)으로 모읍니다.
+    // data 객체에는 { email, password, confirmPassword, name... } 등이 다 들어있다.
+    // 하지만 백엔드 API는 보통 '비밀번호 확인(confirmPassword)' 값은 필요로 하지 않음.
+    // 따라서 confirmPassword는 따로 빼고, 나머지 필요한 정보만 rest 문법(...submitData)으로 모은다.
     const { confirmPassword, ...submitData } = data;
 
     // 실제 전송될 데이터 확인 (개발자 도구 콘솔에서 볼 수 있음)
@@ -39,10 +42,11 @@ export default function Signup() {
 
     try {
       // 2. API 호출: 명세서에 적힌 엔드포인트(/api/auth/signup)로 POST 요청
-      const response = await fetch('/api/auth/signup', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
         method: 'POST', // 데이터를 생성(Create)하므로 POST 메서드 사용
         headers: {
           'Content-Type': 'application/json', // JSON 형식으로 보냄을 명시
+          'ngrok-skip-browser-warning': '69420' //ngrok 보안 문제 해결.
         },
         body: JSON.stringify(submitData), // 자바스크립트 객체를 JSON 문자열로 변환하여 전송
       });
@@ -50,22 +54,30 @@ export default function Signup() {
       // 3. 응답 처리
       if (response.ok) {
         // HTTP 상태 코드가 200번대(성공)일 때
-        alert('회원가입 성공! 로그인 페이지로 이동합니다.');
+        alert('🎉 회원가입 성공! 로그인 페이지로 이동합니다.');
         navigate('/login'); // 성공 시 로그인 화면으로 이동 (사용자 경험 향상)
       } else {
-        // 실패 시 처리 (백엔드 에러 메시지가 있다면 여기서 처리 가능)
-        alert('회원가입 실패. 입력 정보를 다시 확인해주세요.');
+        //  서버가 보내준 구체적인 에러 메시지 읽기
+        let errorMessage = '회원가입 실패. 입력 정보를 다시 확인해주세요.';
+        try {
+          // 서버가 텍스트로 에러를 줄 수도 있고, JSON으로 줄 수도 있음
+          const errorText = await response.text();
+          if (errorText) errorMessage = errorText;
+        } catch (e) {
+          console.error("에러 파싱 실패", e);
+        }
+        alert(`❌ ${errorMessage}`);
       }
     } catch (error) {
       // 네트워크 오류 등 예외 처리
-      console.error("에러 발생:", error);
-      alert('서버 연결 실패. 백엔드 서버가 켜져 있는지 확인해주세요.');
+      console.error(" 네트워크 에러 발생:", error);
+      alert('서버와 연결할 수 없습니다. 백엔드 서버가 켜져 있는지 확인해주세요.');
     }
   };
 
   return (
     // ✨ [전체 배경 디자인]
-    // Box는 div 태그와 유사하며 sx props로 스타일링합니다.
+    // Box는 div 태그와 유사하며 sx props로 스타일링
     <Box
       sx={{
         width: '100%',
