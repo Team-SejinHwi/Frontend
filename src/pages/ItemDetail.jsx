@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+
+//  지도 라이브러리 
+import { Map, MapMarker } from 'react-kakao-maps-sdk';
+
 // UI 컴포넌트: 화면을 예쁘게 구성하기 위한 MUI 라이브러리들
 import {
   Container, Typography, Box, Button, Paper, CircularProgress, Grid,
@@ -13,6 +17,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import ChatIcon from '@mui/icons-material/Chat';
 import BlockIcon from '@mui/icons-material/Block'; // 금지 표시 아이콘 (대여중일 때 사용)
+import PlaceIcon from '@mui/icons-material/Place'; // 위치 아이콘 추가
 
 // 가짜 데이터(Mock)와 설정 파일(Config)
 import { mockItems } from '../mocks/mockData';
@@ -233,13 +238,11 @@ export default function ItemDetail() {
     }
 
     // CASE B: 남의 물건일 때 (구매자 입장)
-    // 1. [문의하기] 버튼: 언제나 표시
-    // 2. [대여 신청] 버튼: 대여 가능 상태(AVAILABLE)일 때만 활성화
     const isAvailable = item.itemStatus === 'AVAILABLE';
 
     return (
       <Stack direction="row" spacing={2} sx={{ width: '100%', mt: 2 }}>
-        {/* ✅ [추가됨] 문의하기 버튼 */}
+        {/* 문의하기 버튼 */}
         <Button
           variant="outlined"
           color="primary"
@@ -250,13 +253,13 @@ export default function ItemDetail() {
           문의하기
         </Button>
 
-        {/* 대여 신청 버튼 (상태에 따라 모양이 바뀜) */}
+        {/* 대여 신청 버튼 */}
         {isAvailable ? (
           <Button
             variant="contained"
             color="primary"
             startIcon={<EventAvailableIcon />}
-            onClick={handleOpenModal} // 모달 띄우기
+            onClick={handleOpenModal} 
             sx={{ flex: 2, py: 1.5, fontWeight: 'bold', boxShadow: 3 }}
           >
             대여 신청
@@ -264,8 +267,8 @@ export default function ItemDetail() {
         ) : (
           <Button
             variant="contained"
-            color="inherit" // 회색 버튼
-            disabled // 클릭 금지
+            color="inherit" 
+            disabled 
             startIcon={<BlockIcon />}
             sx={{ flex: 2, py: 1.5, fontWeight: 'bold', bgcolor: '#ccc', color: '#666' }}
           >
@@ -297,7 +300,7 @@ export default function ItemDetail() {
           {/* --- 좌측: 상품 이미지 영역 --- */}
           <Grid item xs={12} md={6} sx={{ bgcolor: '#f4f4f4', minHeight: '400px', position: 'relative' }}>
             
-            {/* 상태 오버레이 (대여중/완료일 때 이미지 위에 덮어씌움) */}
+            {/* 상태 오버레이 */}
             {item.itemStatus !== 'AVAILABLE' && (
               <Box sx={{
                 position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
@@ -324,7 +327,7 @@ export default function ItemDetail() {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               {item.category && (
                 <Chip
-                  label={item.categoryName || item.category} // 예: 'DIGITAL' or '디지털/가전'
+                  label={item.categoryName || item.category} 
                   color="primary"
                   variant="outlined"
                   size="small"
@@ -358,20 +361,66 @@ export default function ItemDetail() {
                 <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
                   {item.owner?.name || '알 수 없는 사용자'}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {item.location}
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <PlaceIcon sx={{ fontSize: 16, color: 'text.secondary', mr: 0.5 }} />
+                  <Typography variant="caption" color="text.secondary">
+                    {item.tradeAddress || item.location || '위치 정보 없음'}
+                  </Typography>
+                </Box>
               </Box>
             </Box>
 
             {/* 4. 본문 내용 (상세 설명) */}
-            <Box sx={{ flexGrow: 1, minHeight: '100px', p: 2, bgcolor: '#fafafa', borderRadius: 2, mb: 2 }}>
+            <Box sx={{ flexGrow: 1, minHeight: '100px', p: 2, bgcolor: '#fafafa', borderRadius: 2, mb: 3 }}>
               <Typography variant="body1" sx={{ whiteSpace: 'pre-line', color: '#444' }}>
                 {item.content || "상세 설명이 없습니다."}
               </Typography>
             </Box>
 
-            {/* 5. 하단 액션 버튼들 (조건부 렌더링 함수 호출) */}
+            {/*  5. 거래 희망 장소 (미니맵) */}
+            {item.tradeLatitude && item.tradeLongitude && (
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, display:'flex', alignItems:'center' }}>
+                  <PlaceIcon color="primary" sx={{ mr: 0.5 }} />
+                  거래 희망 장소
+                </Typography>
+                <Box sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid #ddd', position: 'relative' }}>
+                  <Map
+                    center={{ lat: item.tradeLatitude, lng: item.tradeLongitude }}
+                    style={{ width: "100%", height: "200px" }}
+                    level={4}
+                    draggable={false} // 지도 이동 방지 (Read Only)
+                    zoomable={false}  // 줌 방지
+                  >
+                    <MapMarker 
+                        position={{ lat: item.tradeLatitude, lng: item.tradeLongitude }}
+                        // 마커 클릭 시 카카오맵 길찾기 새창 열기
+                        onClick={() => window.open(`https://map.kakao.com/link/to/${item.title},${item.tradeLatitude},${item.tradeLongitude}`, '_blank')}
+                    >
+                      {/* 마커 위 인포윈도우 */}
+                      <div style={{ padding: "5px", color: "#000", fontSize: '12px', textAlign: 'center' }}>
+                        <span style={{fontWeight:'bold'}}>거래 장소</span><br/>
+                        <span style={{color: 'blue', cursor: 'pointer'}}>길찾기 &gt;</span>
+                      </div>
+                    </MapMarker>
+                  </Map>
+                  {/* 지도 위를 덮는 투명 레이어 (모바일 스크롤 방해 방지용) */}
+                  <Box 
+                    sx={{ 
+                      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
+                      cursor: 'pointer', zIndex: 10 
+                    }}
+                    onClick={() => window.open(`https://map.kakao.com/link/to/${item.title},${item.tradeLatitude},${item.tradeLongitude}`, '_blank')}
+                    title="클릭하면 길찾기로 연결됩니다"
+                  />
+                </Box>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', textAlign:'right' }}>
+                  * 지도를 클릭하면 길찾기로 연결됩니다.
+                </Typography>
+              </Box>
+            )}
+
+            {/* 6. 하단 액션 버튼들 */}
             <Box sx={{ mt: 'auto' }}>
               {renderActionButtons()}
             </Box>
@@ -379,11 +428,11 @@ export default function ItemDetail() {
         </Grid>
       </Paper>
 
-      {/* --- 대여 신청 모달 (숨겨져 있다가 열림) --- */}
+      {/* --- 대여 신청 모달 --- */}
       <RentalModal
         open={isRentalModalOpen}
         onClose={() => setRentalModalOpen(false)}
-        item={item} // 어떤 상품을 빌리는지 정보 전달
+        item={item} 
       />
     </Container>
   );
