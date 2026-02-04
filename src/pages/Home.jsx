@@ -38,20 +38,30 @@ const CATEGORIES = [
   { label: '기타', value: 'ETC' },
 ];
 
-// 🧮 [Helper] 두 좌표 사이의 거리 계산 함수 (Haversine Formula)
-// 단위: km
+// 🧮 두 좌표(위도, 경도) 사이의 직선 거리 계산 함수
+// 단위: km (킬로미터)
 function getDistanceFromLatLonInKm(lat1, lng1, lat2, lng2) {
-  const R = 6371; // 지구 반지름 (km)
+  const R = 6371; // 지구의 평균 반지름 (단위: km)
+
+  // 1. 위도와 경도의 차이를 구하고 라디안(radian) 단위로 변환.
   const dLat = deg2rad(lat2 - lat1);
   const dLng = deg2rad(lng2 - lng1);
+
+  // 2. 하버사인 공식의 핵심 계산 부분 (두 지점 사이의 현의 길이를 계산하는 과정)
   const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) + // 위도 차이의 절반에 대한 사인 제곱
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * // 각 위도의 코사인 값 곱하기
+    Math.sin(dLng / 2) * Math.sin(dLng / 2); // 경도 차이의 절반에 대한 사인 제곱
+
+  // 3. 중심각(c)을 구합니다. atan2를 사용하여 수치적 안정성을 높인다.
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+
+  // 4. 지구 반지름에 중심각을 곱해 실제 거리(호의 길이)를 산출.
+  return R * c; 
 }
 
+// 📐 각도(Degree)를 라디안(Radian)으로 변환하는 보조 함수
+// 수학 함수(sin, cos 등)는 라디안 값을 인자로 받기 때문에 필수적인 변환.
 function deg2rad(deg) {
   return deg * (Math.PI / 180);
 }

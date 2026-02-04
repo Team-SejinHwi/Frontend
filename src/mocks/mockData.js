@@ -47,13 +47,13 @@ export const mockItems = [
   },
   {
     itemId: 8,
-    title: "이케아 의자 팝니다 아님 빌려줌",
+    title: "이케아 의자 빌려드립니다",
     category: "FURNITURE",
     price: 500,
     location: "인천시 남동구",
-    content: "자취방 뺄 때까지만 잠깐 쓰실 분?\n이케아 기본 의자입니다. 튼튼해요.\n\n홍대입구역 근처에서 가져가셔야 합니다.\n(배달 불가능, 직접 수령 필수)",
+    content: "자취방 뺄 때까지만 잠깐 쓰실 분?\n이케아 기본 의자입니다. 튼튼해요.\n\n인천시청역 근처에서 가져가셔야 합니다.\n(배달 불가능, 직접 수령 필수)",
     itemStatus: "AVAILABLE",
-    itemImageUrl: "https://via.placeholder.com/150",
+    itemImageUrl: "https://i.postimg.cc/k4SRB2d6/chair.png",
     createdAt: "2026-01-10T12:00:00",
 
     //  지도 테스트용 좌표 데이터 (인천시청)
