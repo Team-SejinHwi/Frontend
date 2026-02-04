@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
-//  지도 라이브러리 
+// 지도 라이브러리 
 import { Map, MapMarker } from 'react-kakao-maps-sdk';
 
 // UI 컴포넌트: 화면을 예쁘게 구성하기 위한 MUI 라이브러리들
 import {
   Container, Typography, Box, Button, Paper, CircularProgress, Grid,
-  Chip, Avatar, Divider, Stack
+  Chip, Avatar, Divider, Stack, Rating, List, ListItem, ListItemAvatar, ListItemText
 } from '@mui/material';
 
 // 아이콘: 버튼에 들어갈 시각적 요소들
@@ -16,8 +16,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import ChatIcon from '@mui/icons-material/Chat';
-import BlockIcon from '@mui/icons-material/Block'; // 금지 표시 아이콘 (대여중일 때 사용)
-import PlaceIcon from '@mui/icons-material/Place'; // 위치 아이콘 추가
+import BlockIcon from '@mui/icons-material/Block';
+import PlaceIcon from '@mui/icons-material/Place';
 
 // 가짜 데이터(Mock)와 설정 파일(Config)
 import { mockItems } from '../mocks/mockData';
@@ -25,79 +25,91 @@ import { IS_MOCK_MODE, API_BASE_URL } from '../config';
 import RentalModal from '../components/RentalModal';
 
 export default function ItemDetail() {
-  // URL 파라미터에서 상품 ID 추출 (예: /items/10 -> id = 10)
+  // URL 파라미터에서 상품 ID 추출
   const { id } = useParams();
   const navigate = useNavigate();
 
   // =================================================================
   // 1. 상태 관리 (State Management)
   // =================================================================
-  const [item, setItem] = useState(null); // 불러온 상품 데이터를 저장
-  const [loading, setLoading] = useState(true); // 데이터 로딩 중인지 여부 (로딩바 표시용)
-  const [isRentalModalOpen, setRentalModalOpen] = useState(false); // 대여 신청 모달 창 열림/닫힘 상태
+  const [item, setItem] = useState(null); // 상품 데이터
+  const [reviews, setReviews] = useState([]); // 🌟 리뷰 목록 데이터
+  const [loading, setLoading] = useState(true); // 로딩 상태
+  const [isRentalModalOpen, setRentalModalOpen] = useState(false); // 대여 신청 모달
 
   // =================================================================
   // 2. 권한 및 로그인 정보 확인
   // =================================================================
-  // 현재 로그인한 사람의 이메일 (나중에 '이 글이 내 글인가?' 확인할 때 씀)
   const myEmail = localStorage.getItem('userEmail');
-  // 토큰이 있는지 확인하여 로그인 여부 판단
   const isLoggedIn = !!localStorage.getItem('accessToken');
 
   // =================================================================
-  // 3. 상품 상세 정보 로드 (API 명세 1-3. 상품 상세 조회)
+  // 3. 데이터 조회 (상품 상세 + 리뷰 목록)
   // =================================================================
   useEffect(() => {
-    const fetchDetail = async () => {
+    const fetchDetailAndReviews = async () => {
       try {
-        // [A] Mock 모드 (백엔드 없을 때 테스트용)
+        // [A] Mock 모드
         if (IS_MOCK_MODE) {
           const found = mockItems.find(i => i.itemId === parseInt(id));
+
           if (found) {
-            // 로딩 효과를 주기 위해 0.5초 뒤에 데이터 세팅
             setTimeout(() => {
               setItem(found);
+              // Mock 리뷰 데이터 (테스트용 하드코딩)
+              setReviews([
+                { reviewId: 1, reviewerName: "김철수", rating: 5, content: "상태 완전 좋습니다! 잘 썼어요.", createdAt: "2026-01-20" },
+                { reviewId: 2, reviewerName: "이영희", rating: 4, content: "겉에는 조금 더러웠지만, 사용에는 문제없어요", createdAt: "2026-01-22" }
+              ]);
               setLoading(false);
             }, 500);
-            return;
+          } else {
+            // 🚨 [Mock 예외처리] 데이터에 없는 ID일 경우 무한 로딩 방지 후 메인으로 이동
+            alert("해당 상품을 찾을 수 없습니다. (Mock Data ID 확인 필요)");
+            setLoading(false);
+            navigate('/');
           }
+          return; // 여기서 함수 종료해야 아래 Real 모드 코드가 실행 안 됨
         }
 
         // [B] Real 모드 (실제 서버 통신)
-        // GET /api/items/{itemId} 호출
-        const response = await fetch(`${API_BASE_URL}/api/items/${id}`, {
-          headers: { "ngrok-skip-browser-warning": "69420" },
-        });
+        // 병렬 호출(Promise.all): 상품 정보와 리뷰 정보를 동시에 가져와 속도 향상
+        const [itemRes, reviewRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/items/${id}`, { headers: { "ngrok-skip-browser-warning": "69420" } }),
+          fetch(`${API_BASE_URL}/api/reviews/item/${id}`, { headers: { "ngrok-skip-browser-warning": "69420" } })
+        ]);
 
-        if (!response.ok) throw new Error("상품 조회 실패");
-        const data = await response.json();
+        // 상품 조회 실패 시 에러 처리
+        if (!itemRes.ok) throw new Error("상품 조회 실패");
+        const itemData = await itemRes.json();
+        setItem(itemData.data || itemData);
 
-        // API 응답이 { data: { ... } } 형태일 수도 있고, 바로 객체일 수도 있어서 방어 코드 작성
-        setItem(data.data || data);
+        // 리뷰 데이터 처리 (리뷰가 없거나 실패해도 상품은 보여줘야 하므로 에러 무시 가능)
+        if (reviewRes.ok) {
+          const reviewData = await reviewRes.json();
+          setReviews(reviewData.data || []);
+        }
 
       } catch (error) {
         console.error("Error:", error);
         alert("상품 정보를 불러오는데 실패했습니다.");
-        navigate('/'); // 에러 나면 메인으로 튕겨냄
+        navigate('/'); // 에러 시 메인으로 이동
       } finally {
         if (!IS_MOCK_MODE) setLoading(false); // 로딩 끝
       }
     };
 
-    fetchDetail();
+    fetchDetailAndReviews();
   }, [id, navigate]);
 
-  // 디버깅용 로그 (개발자 도구 콘솔에서 확인 가능)
-  console.log("=============== 주인 확인 디버깅 ===============");
-  console.log("1. 내 이메일 (로그인한 사람):", myEmail);
-  console.log("2. 상품 주인 정보:", item?.owner);
-
-  // 🔑 본인 확인 로직: (상품 주인의 이메일 === 내 이메일)이면 true
+  // 🔑 본인 확인 로직: (상품 주인 이메일 === 내 이메일)
   const isOwner = item?.owner?.email === myEmail;
 
   // =================================================================
-  // 4. 상품 삭제 핸들러 (API 명세 1-5. 상품 삭제)
+  // 4. 핸들러 (Handlers)
   // =================================================================
+  
+  // 상품 삭제
   const handleDelete = async () => {
     if (!window.confirm("정말로 이 게시물을 삭제하시겠습니까?")) return;
 
@@ -109,8 +121,6 @@ export default function ItemDetail() {
 
     try {
       const token = localStorage.getItem('accessToken');
-      // DELETE /api/items/{itemId}
-      // 내 글을 지우는 것이므로 Authorization 헤더(토큰) 필수!
       const response = await fetch(`${API_BASE_URL}/api/items/${id}`, {
         method: 'DELETE',
         headers: {
@@ -120,10 +130,9 @@ export default function ItemDetail() {
       });
 
       const result = await response.json();
-
       if (response.ok) {
         alert(result.message || "삭제되었습니다.");
-        navigate('/'); // 삭제 후 메인으로 이동
+        navigate('/');
       } else {
         alert(result.message || "삭제 실패");
       }
@@ -133,24 +142,18 @@ export default function ItemDetail() {
     }
   };
 
-  // =================================================================
-  // 5. 모달 오픈 핸들러 (대여 신청 버튼 클릭 시)
-  // =================================================================
+  // 대여 신청 모달 열기
   const handleOpenModal = () => {
-    // 비로그인 상태면 로그인 페이지로 유도
     if (!isLoggedIn) {
       if (window.confirm("로그인이 필요한 서비스입니다.\n로그인 페이지로 이동하시겠습니까?")) {
         navigate('/login');
       }
       return;
     }
-    // 로그인 상태면 모달 열기
     setRentalModalOpen(true);
   };
 
-  // =================================================================
-  // 6. 채팅 시작 핸들러 (API 명세 3-1. 채팅방 생성)
-  // =================================================================
+  // 채팅방 생성 및 이동
   const handleChatStart = async () => {
     if (!isLoggedIn) {
       if (window.confirm("로그인이 필요한 서비스입니다.\n로그인 페이지로 이동하시겠습니까?")) {
@@ -160,14 +163,13 @@ export default function ItemDetail() {
     }
 
     if (IS_MOCK_MODE) {
-      alert("[Mock] 채팅방 생성 (테스트)");
+      alert("[Mock] 채팅방 생성");
       navigate(`/chat/999`);
       return;
     }
 
     try {
       const token = localStorage.getItem('accessToken');
-      // POST /api/chat/room -> { itemId: 10 } 보냄
       const response = await fetch(`${API_BASE_URL}/api/chat/room`, {
         method: 'POST',
         headers: {
@@ -179,37 +181,31 @@ export default function ItemDetail() {
       });
 
       const result = await response.json();
-
       if (response.ok) {
-        // 서버가 준 roomId를 찾아서 해당 채팅방으로 이동
         const realRoomId = (result.data && result.data.roomId) || result.roomId;
-
         if (realRoomId) {
-          console.log("채팅방 생성 성공:", realRoomId);
           navigate(`/chat/${realRoomId}`);
         } else {
-          alert("채팅방 번호를 찾을 수 없습니다.");
+          alert("채팅방 번호 없음");
         }
       } else {
         alert(result.message || "채팅방 생성 실패");
       }
     } catch (error) {
       console.error("채팅방 에러:", error);
-      alert("서버 연결 실패");
     }
   };
 
-  // 이미지 URL 처리 함수 (http로 시작하면 그대로, 아니면 서버 주소 붙임)
   const getImageUrl = (url) => {
     if (!url) return "https://via.placeholder.com/400?text=No+Image";
     return url.startsWith("http") ? url : `${API_BASE_URL}${url}`;
   };
 
   // =================================================================
-  // 7. 하단 버튼 렌더링 (핵심 로직 - 조건부 렌더링)
+  // 5. 하단 버튼 렌더링 (주인 vs 구매자)
   // =================================================================
   const renderActionButtons = () => {
-    // CASE A: 내가 주인일 때 -> [수정] [삭제] 버튼 표시
+    // 주인일 경우: 수정/삭제 버튼
     if (isOwner) {
       return (
         <Stack direction="row" spacing={2} sx={{ width: '100%', mt: 2 }}>
@@ -237,12 +233,11 @@ export default function ItemDetail() {
       );
     }
 
-    // CASE B: 남의 물건일 때 (구매자 입장)
+    // 구매자일 경우
     const isAvailable = item.itemStatus === 'AVAILABLE';
 
     return (
       <Stack direction="row" spacing={2} sx={{ width: '100%', mt: 2 }}>
-        {/* 문의하기 버튼 */}
         <Button
           variant="outlined"
           color="primary"
@@ -253,13 +248,12 @@ export default function ItemDetail() {
           문의하기
         </Button>
 
-        {/* 대여 신청 버튼 */}
         {isAvailable ? (
           <Button
             variant="contained"
             color="primary"
             startIcon={<EventAvailableIcon />}
-            onClick={handleOpenModal} 
+            onClick={handleOpenModal}
             sx={{ flex: 2, py: 1.5, fontWeight: 'bold', boxShadow: 3 }}
           >
             대여 신청
@@ -267,8 +261,8 @@ export default function ItemDetail() {
         ) : (
           <Button
             variant="contained"
-            color="inherit" 
-            disabled 
+            color="inherit"
+            disabled
             startIcon={<BlockIcon />}
             sx={{ flex: 2, py: 1.5, fontWeight: 'bold', bgcolor: '#ccc', color: '#666' }}
           >
@@ -279,14 +273,18 @@ export default function ItemDetail() {
     );
   };
 
-  // 로딩 중일 때 로딩 스피너 표시
+  // 로딩 및 데이터 없음 처리
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}><CircularProgress /></Box>;
-  // 상품 데이터가 없으면 아무것도 안 그림
   if (!item) return null;
+
+  // 평균 별점 계산 (소수점 첫째자리)
+  const averageRating = reviews.length > 0
+    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+    : 0;
 
   return (
     <Container maxWidth="md" sx={{ py: 5 }}>
-      {/* 상단: 목록으로 돌아가기 버튼 */}
+      {/* 뒤로가기 버튼 */}
       <Button
         startIcon={<ArrowBackIcon />}
         onClick={() => navigate('/')}
@@ -297,10 +295,9 @@ export default function ItemDetail() {
 
       <Paper elevation={3} sx={{ borderRadius: 4, overflow: 'hidden' }}>
         <Grid container>
-          {/* --- 좌측: 상품 이미지 영역 --- */}
+          {/* 상품 이미지 영역 */}
           <Grid item xs={12} md={6} sx={{ bgcolor: '#f4f4f4', minHeight: '400px', position: 'relative' }}>
-            
-            {/* 상태 오버레이 */}
+            {/* 품절/대여중 오버레이 표시 */}
             {item.itemStatus !== 'AVAILABLE' && (
               <Box sx={{
                 position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
@@ -311,7 +308,6 @@ export default function ItemDetail() {
                 </Typography>
               </Box>
             )}
-
             <Box
               component="img"
               src={getImageUrl(item.itemImageUrl)}
@@ -320,14 +316,14 @@ export default function ItemDetail() {
             />
           </Grid>
 
-          {/* --- 우측: 상세 정보 텍스트 영역 --- */}
+          {/* 상품 상세 텍스트 영역 */}
           <Grid item xs={12} md={6} sx={{ p: 4, display: 'flex', flexDirection: 'column' }}>
-
-            {/* 1. 카테고리 칩 & 등록일 */}
+            
+            {/* 카테고리 및 날짜 */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               {item.category && (
                 <Chip
-                  label={item.categoryName || item.category} 
+                  label={item.categoryName || item.category}
                   color="primary"
                   variant="outlined"
                   size="small"
@@ -339,7 +335,7 @@ export default function ItemDetail() {
               </Typography>
             </Box>
 
-            {/* 2. 제목 & 가격 정보 */}
+            {/* 제목 및 가격 */}
             <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1, wordBreak: 'keep-all' }}>
               {item.title}
             </Typography>
@@ -352,7 +348,7 @@ export default function ItemDetail() {
 
             <Divider sx={{ mb: 3 }} />
 
-            {/* 3. 판매자(Owner) 프로필 섹션 */}
+            {/* 판매자 정보 및 위치 */}
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
               <Avatar sx={{ bgcolor: 'secondary.main', mr: 2 }}>
                 {item.owner?.name ? item.owner.name[0] : 'U'}
@@ -370,17 +366,17 @@ export default function ItemDetail() {
               </Box>
             </Box>
 
-            {/* 4. 본문 내용 (상세 설명) */}
+            {/* 상세 설명 */}
             <Box sx={{ flexGrow: 1, minHeight: '100px', p: 2, bgcolor: '#fafafa', borderRadius: 2, mb: 3 }}>
               <Typography variant="body1" sx={{ whiteSpace: 'pre-line', color: '#444' }}>
                 {item.content || "상세 설명이 없습니다."}
               </Typography>
             </Box>
 
-            {/*  5. 거래 희망 장소 (미니맵) */}
+            {/* 거래 위치 지도 (카카오맵) */}
             {item.tradeLatitude && item.tradeLongitude && (
               <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, display:'flex', alignItems:'center' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, display: 'flex', alignItems: 'center' }}>
                   <PlaceIcon color="primary" sx={{ mr: 0.5 }} />
                   거래 희망 장소
                 </Typography>
@@ -389,38 +385,28 @@ export default function ItemDetail() {
                     center={{ lat: item.tradeLatitude, lng: item.tradeLongitude }}
                     style={{ width: "100%", height: "200px" }}
                     level={4}
-                    draggable={false} // 지도 이동 방지 (Read Only)
-                    zoomable={false}  // 줌 방지
+                    draggable={false}
+                    zoomable={false}
                   >
-                    <MapMarker 
-                        position={{ lat: item.tradeLatitude, lng: item.tradeLongitude }}
-                        // 마커 클릭 시 카카오맵 길찾기 새창 열기
-                        onClick={() => window.open(`https://map.kakao.com/link/to/${item.title},${item.tradeLatitude},${item.tradeLongitude}`, '_blank')}
-                    >
-                      {/* 마커 위 인포윈도우 */}
-                      <div style={{ padding: "5px", color: "#000", fontSize: '12px', textAlign: 'center' }}>
-                        <span style={{fontWeight:'bold'}}>거래 장소</span><br/>
-                        <span style={{color: 'blue', cursor: 'pointer'}}>길찾기 &gt;</span>
-                      </div>
-                    </MapMarker>
+                    <MapMarker
+                      position={{ lat: item.tradeLatitude, lng: item.tradeLongitude }}
+                      onClick={() => window.open(`https://map.kakao.com/link/to/${item.title},${item.tradeLatitude},${item.tradeLongitude}`, '_blank')}
+                    />
                   </Map>
-                  {/* 지도 위를 덮는 투명 레이어 (모바일 스크롤 방해 방지용) */}
-                  <Box 
-                    sx={{ 
-                      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
-                      cursor: 'pointer', zIndex: 10 
+                  {/* 클릭 시 길찾기 이동을 위한 투명 레이어 */}
+                  <Box
+                    sx={{
+                      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                      cursor: 'pointer', zIndex: 10
                     }}
                     onClick={() => window.open(`https://map.kakao.com/link/to/${item.title},${item.tradeLatitude},${item.tradeLongitude}`, '_blank')}
                     title="클릭하면 길찾기로 연결됩니다"
                   />
                 </Box>
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', textAlign:'right' }}>
-                  * 지도를 클릭하면 길찾기로 연결됩니다.
-                </Typography>
               </Box>
             )}
 
-            {/* 6. 하단 액션 버튼들 */}
+            {/* 하단 버튼 영역 */}
             <Box sx={{ mt: 'auto' }}>
               {renderActionButtons()}
             </Box>
@@ -428,11 +414,64 @@ export default function ItemDetail() {
         </Grid>
       </Paper>
 
-      {/* --- 대여 신청 모달 --- */}
+      {/* 🌟 [NEW] 이용 후기 섹션 */}
+      <Box sx={{ mt: 5 }}>
+        <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center' }}>
+          ⭐ 이용 후기 ({reviews.length})
+          {reviews.length > 0 && (
+            <Typography variant="h6" color="primary" sx={{ ml: 1, fontWeight: 'bold' }}>
+              {averageRating} / 5.0
+            </Typography>
+          )}
+        </Typography>
+
+        <Paper elevation={1} sx={{ borderRadius: 3, p: 2 }}>
+          {reviews.length === 0 ? (
+            <Typography color="text.secondary" align="center" sx={{ py: 4 }}>
+              아직 작성된 후기가 없습니다. 첫 번째 후기를 남겨보세요!
+            </Typography>
+          ) : (
+            <List>
+              {reviews.map((review, index) => (
+                <React.Fragment key={review.reviewId || index}>
+                  <ListItem alignItems="flex-start">
+                    <ListItemAvatar>
+                      <Avatar>{review.reviewerName ? review.reviewerName[0] : '익'}</Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={
+                        <Box display="flex" justifyContent="space-between" alignItems="center">
+                          <Typography variant="subtitle1" fontWeight="bold">
+                            {review.reviewerName || "익명 사용자"}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {review.createdAt ? new Date(review.createdAt).toLocaleDateString() : ""}
+                          </Typography>
+                        </Box>
+                      }
+                      secondary={
+                        <Box mt={0.5}>
+                          <Rating value={review.rating} readOnly size="small" />
+                          <Typography variant="body2" color="text.primary" sx={{ mt: 1 }}>
+                            {review.content}
+                          </Typography>
+                        </Box>
+                      }
+                    />
+                  </ListItem>
+                  {index < reviews.length - 1 && <Divider variant="inset" component="li" />}
+                </React.Fragment>
+              ))}
+            </List>
+          )}
+        </Paper>
+      </Box>
+
+      {/* 대여 신청 모달 */}
       <RentalModal
         open={isRentalModalOpen}
         onClose={() => setRentalModalOpen(false)}
-        item={item} 
+        item={item}
       />
     </Container>
   );

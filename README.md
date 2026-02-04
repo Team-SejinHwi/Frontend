@@ -15,7 +15,7 @@
   * 단순 CRUD를 넘어선 **복합 데이터 처리(File/JSON)** 로직 구현
   * **WebSocket**을 활용한 실시간 양방향 통신 시스템 구축
   * **Kakao Maps API**를 활용한 위치 기반 서비스(LBS) 구현
-  * **보안(Security)** 및 **사용자 경험(UX)**을 고려한 최적화
+  * **신뢰도 시스템(Review)** 및 보안(Security)을 고려한 사용자 경험 최적화
 
 <br>
 
@@ -59,7 +59,12 @@
 - **Pub/Sub 아키텍처:** `/topic/chat/room/{id}` 경로를 구독하여 메시지를 지연 없이 실시간 수신합니다.
 - **연결 보안:** 소켓 핸드쉐이크 시 헤더(`connectHeaders`)에 인증 토큰을 실어 보내 비인가 사용자의 접근을 막았습니다.
 
-### E. 👤 사용자 경험 최적화 (UX Optimization)
+### E. ⭐ 후기 및 평점 시스템 (Reviews & Ratings) - [NEW ✨]
+- **거래 신뢰도 강화:** 대여 상태가 `반납 완료(COMPLETED)`인 경우에만 후기 작성 버튼이 활성화되도록 로직을 제어하여 허위 리뷰를 방지합니다.
+- **UX 친화적 모달:** MUI `Dialog`와 `Rating` 컴포넌트를 활용한 직관적인 리뷰 작성 모달(`ReviewModal`)을 구현했습니다.
+- **실시간 반영:** 상품 상세 페이지 진입 시 `Promise.all`을 이용해 상품 정보와 리뷰 목록을 병렬로 호출하며, 평균 평점을 즉시 계산하여 시각화합니다.
+
+### F. 👤 사용자 경험 최적화 (UX Optimization)
 - **병렬 데이터 로딩:** 마이페이지 진입 시 `Promise.all`을 사용하여 프로필과 상품 목록을 동시에 호출, 로딩 속도를 **50% 이상 단축**했습니다.
 - **통합 탭 인터페이스:** [내 물건], [받은 요청], [대여 내역], [채팅 목록]을 하나의 페이지에서 직관적으로 관리할 수 있도록 구현했습니다.
 
@@ -71,24 +76,31 @@
 
 <br>
 
-## 5. 📂 프로젝트 구조 (Directory Structure)
+## 5. 📂 프로젝트 구조 (Directory Structure) (v1.2)
 ```bash
 src
 ├── components          # 재사용 가능한 UI 컴포넌트
-│   ├── ItemCard.jsx        # 상품 카드 (메인/검색)
-│   ├── RentalModal.jsx     # 대여 신청 및 계산 모달
 │   ├── ChatList.jsx        # 채팅방 목록 아이템
+│   ├── ItemCard.jsx        # 상품 카드 (메인/검색)
 │   ├── ReceivedRequests.jsx # 받은 요청 관리 (수락/거절)
-│   └── SentRequests.jsx     # 보낸 요청 관리 (상태 확인)
+│   ├── RentalModal.jsx     # 대여 신청 및 계산 모달
+│   ├── ReviewModal.jsx     # ✨ [NEW] 후기 작성 모달 (별점 & 텍스트)
+│   └── SentRequests.jsx    # 보낸 요청 관리 (상태 확인 & ✨ 후기 작성 진입)
 ├── mocks               # 프론트엔드 독립 테스트 데이터
-│   └── mockData.js         # 가상 상품/유저/거래 데이터
+│   └── mockData.js         # 가상 상품/유저/거래/✨리뷰 데이터
 ├── pages               # 라우팅 페이지 (Screen)
-│   ├── Home.jsx            # 메인 (위치 기반 필터링 & 지도)
-│   ├── ItemRegister.jsx    # 상품 등록 (주소 검색 & 마커 설정)
-│   ├── ItemDetail.jsx      # 상품 상세 (미니맵 & 길찾기)
-│   ├── ItemEdit.jsx        # 상품 수정
 │   ├── ChatRoom.jsx        # 1:1 실시간 채팅방
+│   ├── Home.jsx            # 메인 (위치 기반 필터링 & 지도)
+│   ├── ItemDetail.jsx      # 상품 상세 (대여신청/수정/삭제 & ✨ 후기 목록 조회)
+│   ├── ItemEdit.jsx        # 상품 수정
+│   ├── ItemRegister.jsx    # 상품 등록 (주소 검색 & 마커 설정)
+│   ├── Login.jsx           # 로그인 페이지
 │   ├── MyPage.jsx          # 마이페이지 (탭 관리)
-│   └── Login.jsx / Signup.jsx
+│   └── Signup.jsx          # 회원가입 페이지
+├── App.css             # 앱 컴포넌트 전역 스타일
 ├── App.jsx             # 라우터(Router) 및 전역 레이아웃 설정
-└── config.js           # API Base URL 및 모드 설정 (Mock/Real)
+├── config.js           # API Base URL 및 모드 설정 (Mock/Real)
+├── index.css           # 초기 스타일 리셋 및 폰트 설정
+├── index.js            # React 앱 진입점 (Entry Point)
+├── reportWebVitals.js  # 성능 측정 도구 (React 기본 파일)
+└── setupProxy.js       # CRA 프록시 설정 (CORS 해결 및 백엔드 통신)

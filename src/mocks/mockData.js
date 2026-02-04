@@ -107,28 +107,29 @@ export const mockMyRentals = [
     itemId: 9,
     itemTitle: "캠핑용 텐트 (4인용)",
     ownerName: "캠핑족",
-    status: "WAITING",
+    status: "COMPLETED", //status: "WAITING"
     totalPrice: 24000,
     startDate: "2026-02-10T10:00:00",
     endDate: "2026-02-11T10:00:00"
   },
   {
     rentalId: 199,
-    itemId: 5,
-    itemTitle: "DSLR 카메라",
-    ownerName: "포토그래퍼",
-    status: "COMPLETED",
+    itemId: 8, // 기존 5번(없는 상품)에서 8번(이케아 의자)으로 변경!
+    itemTitle: "이케아 의자 빌려드립니다", //  제목도 8번 상품에 맞게 변경
+    ownerName: "게스트",
+    status: "COMPLETED", // 반납 완료 상태 -> 리뷰 작성 가능
     totalPrice: 30000,
     startDate: "2026-01-20T09:00:00",
     endDate: "2026-01-20T18:00:00"
   },
   {
     rentalId: 198,
-    itemId: 3,
-    itemTitle: "전동 드릴",
-    ownerName: "동네형",
+    itemId: 10, // 👈 [수정] 3번에서 10번(맥북)으로 변경 (거절된 케이스 테스트용)
+    itemTitle: "맥북 프로 M3 빌려드립니다",
+    ownerName: "세지니",
     status: "REJECTED",
     totalPrice: 5000,
+    rejectReason: "기간이 너무 짧아서 대여가 곤란합니다.",
     startDate: "2026-01-15T14:00:00",
     endDate: "2026-01-15T15:00:00"
   }
