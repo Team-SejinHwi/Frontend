@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Map, MapMarker, CustomOverlayMap } from 'react-kakao-maps-sdk'; //  지도 라이브러리
+import { Map, MapMarker } from 'react-kakao-maps-sdk'; // 지도 라이브러리
 
 // UI 구성을 위한 Material UI 컴포넌트들
 import {
@@ -66,7 +66,7 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
   const [keyword, setKeyword] = useState('');
   const [category, setCategory] = useState('');
 
-  //  뷰 모드 (LIST: 리스트 보기, MAP: 지도 보기)
+  // 뷰 모드 (LIST: 리스트 보기, MAP: 지도 보기)
   const [viewMode, setViewMode] = useState('LIST');
 
   // 내 위치 및 필터 상태
@@ -84,7 +84,7 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
   const myName = localStorage.getItem('userName') || myEmail.split('@')[0] || '사용자';
 
   // =================================================================
-  // 2. 데이터 로드 함수 (핵심 로직 - 위치 기반 필터링 추가)
+  // 2. 데이터 로드 함수 (핵심 로직 - 위치 기반 필터링 & API v.02.02 limit 적용)
   // =================================================================
   const fetchItems = (
     targetCategory = category, 
@@ -103,7 +103,7 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
         // 2. 검색어 필터
         if (targetKeyword) filtered = filtered.filter(i => i.title.includes(targetKeyword));
         
-        //  3. 위치 기반 필터 (내 주변 5km)
+        // 3. 위치 기반 필터 (내 주변 5km)
         if (targetLoc.active && targetLoc.lat && targetLoc.lng) {
             console.log("📍 [Mock] 내 주변 5km 필터링 시작:", targetLoc);
             filtered = filtered.filter(item => {
@@ -124,12 +124,17 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
       return;
     }
 
-    // [B] Real 모드
+    // [B] Real 모드 (v.02.02 API 명세 반영)
     const queryParams = new URLSearchParams();
+
+    // ★ [UPDATE v.02.02] limit 파라미터 추가
+    // 설명: API 기본값이 5개로 줄어들었기 때문에, 지도 표시 등을 위해 충분한 수량(예: 100개)을 명시적으로 요청합니다.
+    queryParams.append('limit', 100); 
+
     if (targetCategory) queryParams.append('category', targetCategory);
     if (targetKeyword) queryParams.append('keyword', targetKeyword);
     
-    //  위치 필터 파라미터 추가
+    // 위치 필터 파라미터 추가
     if (targetLoc.active && targetLoc.lat && targetLoc.lng) {
         queryParams.append('lat', targetLoc.lat);
         queryParams.append('lng', targetLoc.lng);
@@ -141,6 +146,7 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
     })
       .then(res => res.json())
       .then(data => {
+        // 응답 구조가 배열일 수도 있고, { data: [...] } 형태일 수도 있음 (API 명세에 따라 대응)
         if (Array.isArray(data)) setItems(data);
         else if (data.data && Array.isArray(data.data)) setItems(data.data);
         else setItems([]);
@@ -162,7 +168,7 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
   // 3. 핸들러 (Event Handlers)
   // =================================================================
   
-  //  내 주변 찾기 버튼 클릭
+  // 내 주변 찾기 버튼 클릭
   const handleNearMeClick = () => {
     // 이미 활성화 상태라면 -> 필터 해제
     if (locationFilter.active) {
@@ -328,7 +334,7 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
                     ))}
                 </Box>
 
-                {/*  리스트/지도 뷰 토글 버튼 */}
+                {/* 리스트/지도 뷰 토글 버튼 */}
                 <ToggleButtonGroup
                     value={viewMode}
                     exclusive
@@ -364,7 +370,7 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
                 {locationFilter.active && <Typography variant="body2" color="text.secondary">반경을 넓히거나 다른 지역에서 검색해보세요.</Typography>}
             </Box>
         ) : (
-            //  뷰 모드에 따라 분기 처리
+            // 뷰 모드에 따라 분기 처리
             viewMode === 'LIST' ? (
                 // [A] 리스트 뷰 (기존 Grid)
                 <Grid container spacing={3}>

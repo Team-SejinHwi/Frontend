@@ -2,15 +2,17 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-// UI 컴포넌트
+
+// UI 컴포넌트 (MUI)
 import { 
   Box, TextField, IconButton, AppBar, Toolbar, Avatar, Typography, 
   Paper, Stack, CircularProgress
 } from '@mui/material';
+
 // 아이콘
 import SendIcon from '@mui/icons-material/Send';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
+import SmartToyIcon from '@mui/icons-material/SmartToy'; // 상대방 기본 프사
 
 // 날짜 포맷팅 라이브러리
 import dayjs from 'dayjs';
@@ -36,7 +38,7 @@ const ChatRoom = () => {
   const token = localStorage.getItem('accessToken');
 
   // =================================================================
-  // 1. 초기 데이터 로드 (내 정보 & 이전 대화)
+  // 1. 초기 데이터 로드 (내 정보 & 이전 대화) - [기존 로직 유지]
   // =================================================================
   useEffect(() => {
     const initializeChat = async () => {
@@ -94,7 +96,7 @@ const ChatRoom = () => {
   }, [roomId, token, navigate]);
 
   // =================================================================
-  // 2. 웹소켓 연결 (Real Mode Only)
+  // 2. 웹소켓 연결 (Real Mode Only) - [기존 로직 유지]
   // =================================================================
   useEffect(() => {
     if (IS_MOCK_MODE || !myId) return;
@@ -130,7 +132,7 @@ const ChatRoom = () => {
   }, [messages]);
 
   // =================================================================
-  // 4. 메시지 전송 핸들러
+  // 4. 메시지 전송 핸들러 - [기존 로직 유지]
   // =================================================================
   const sendMessage = () => {
     if (!input.trim()) return;
@@ -140,7 +142,6 @@ const ChatRoom = () => {
 
     // [A] Mock 모드
     if (IS_MOCK_MODE) {
-      // ✅ [수정됨] 내가 보낸 메시지에도 'sendTime'을 직접 넣어줍니다.
       setMessages([...messages, { senderId: myId, message: input, sendTime: now }]);
       setInput('');
       return;
@@ -153,9 +154,6 @@ const ChatRoom = () => {
         senderId: myId,
         message: input,
         type: 'TALK' 
-        // 💡 벡엔드 통신 시: 보통 여기서 sendTime은 안 보냅니다. 
-        // 서버가 받아서 DB에 저장하는 순간의 시간을 찍어서 돌려주는 게 정석입니다.
-        // 즉, 서버 응답이 오면 그때 시간이 표시될 것입니다.
       };
 
       stompClient.current.publish({
@@ -178,23 +176,34 @@ const ChatRoom = () => {
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', height: '100vh', alignItems: 'center' }}><CircularProgress /></Box>;
 
+  // =================================================================
+  // 🎨 UI 렌더링 (카카오톡 스타일 적용)
+  // =================================================================
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: '#f2f4f7' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: '#b2c7d9' }}> {/* 🌈 배경색: 카카오톡 느낌의 하늘색 */}
       
-      {/* 🔹 상단 헤더 */}
-      <AppBar position="static" elevation={0} sx={{ bgcolor: 'white', borderBottom: '1px solid #e0e0e0', color: 'black' }}>
+      {/* 🔹 상단 헤더 (투명도 살짝 적용) */}
+      <AppBar 
+        position="static" 
+        elevation={0} 
+        sx={{ 
+          bgcolor: 'rgba(255, 255, 255, 0.9)', // 살짝 투명한 흰색 배경
+          color: 'black',
+          backdropFilter: 'blur(5px)' // 블러 효과로 고급스러움 추가
+        }}
+      >
         <Toolbar>
           <IconButton edge="start" onClick={() => navigate(-1)} sx={{ color: 'black' }}>
             <ArrowBackIcon />
           </IconButton>
-          <Typography variant="h6" sx={{ ml: 1, flexGrow: 1, fontWeight: 'bold' }}>
-            채팅방
+          <Typography variant="h6" sx={{ ml: 1, flexGrow: 1, fontWeight: 'bold', fontSize: '1.1rem' }}>
+            대여 문의 채팅방
           </Typography>
         </Toolbar>
       </AppBar>
 
-      {/* 🔹 채팅 영역 */}
-      <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {/* 🔹 채팅 메시지 영역 */}
+      <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
         {messages.map((msg, index) => {
           const isMe = String(msg.senderId) === String(myId);
           
@@ -203,44 +212,49 @@ const ChatRoom = () => {
               key={index} 
               sx={{ 
                 display: 'flex', 
-                justifyContent: isMe ? 'flex-end' : 'flex-start',
-                alignItems: 'flex-end',
-                mb: 1 
+                justifyContent: isMe ? 'flex-end' : 'flex-start', // 나는 오른쪽, 상대는 왼쪽
+                alignItems: 'flex-start',
+                mb: 1
               }}
             >
-              {/* 상대방 프로필 (왼쪽에만 표시) */}
+              {/* 👤 상대방 프로필 (왼쪽에만 표시) */}
               {!isMe && (
-                <Avatar sx={{ width: 36, height: 36, mr: 1.5, bgcolor: '#e0e0e0' }}>
-                  <SmartToyIcon sx={{ color: '#757575', fontSize: 20 }} />
+                <Avatar sx={{ width: 40, height: 40, mr: 1, bgcolor: '#ffffff', border: '1px solid #ddd' }}>
+                  <SmartToyIcon sx={{ color: '#555', fontSize: 24 }} />
                 </Avatar>
               )}
 
-              {/* 말풍선 + 시간 래퍼 */}
-              <Stack direction={isMe ? "row-reverse" : "row"} alignItems="flex-end" spacing={1}>
-                {/* 💬 말풍선 디자인 */}
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: '10px 16px',
-                    maxWidth: '300px',
-                    wordBreak: 'break-word',
-                    // 카카오톡 스타일: 내 거는 노란색/파란색, 상대는 흰색/회색
-                    bgcolor: isMe ? '#3b82f6' : '#ffffff', 
-                    color: isMe ? '#fff' : '#1f2937',
-                    borderRadius: isMe ? '20px 20px 0px 20px' : '20px 20px 20px 0px', // 꼬리 모양 만들기
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-                  }}
-                >
-                  <Typography variant="body1" sx={{ fontSize: '0.95rem', lineHeight: 1.5 }}>
-                    {msg.message}
-                  </Typography>
-                </Paper>
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', maxWidth: '70%' }}>
+                
+                {/* 🏷️ 상대방 이름 (선택 사항: 필요하면 주석 해제) */}
+                {/* {!isMe && <Typography variant="caption" sx={{ ml: 1, mb: 0.5, color: '#555' }}>판매자</Typography>} */}
 
-                {/* 🕒 시간 표시 */}
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', mb: 0.5 }}>
-                  {msg.sendTime ? dayjs(msg.sendTime).format('A h:mm') : '전송 중...'}
-                </Typography>
-              </Stack>
+                {/* 💬 말풍선 + 시간 (가로 배치) */}
+                <Box sx={{ display: 'flex', alignItems: 'flex-end', flexDirection: isMe ? 'row' : 'row-reverse' }}>
+                  
+                  {/* ⏰ 시간 표시 (말풍선 옆에 붙음) */}
+                  <Typography variant="caption" sx={{ color: '#555', fontSize: '0.7rem', mx: 0.5, mb: 0.5 }}>
+                    {msg.sendTime ? dayjs(msg.sendTime).format('A h:mm') : ''}
+                  </Typography>
+
+                  {/* 🗨️ 말풍선 본체 */}
+                  <Paper
+                    elevation={1}
+                    sx={{
+                      p: '8px 12px',
+                      bgcolor: isMe ? '#fef01b' : '#ffffff', // 🟡 나는 카톡 노란색, ⚪ 상대는 흰색
+                      color: 'black',
+                      borderRadius: isMe ? '15px 0px 15px 15px' : '0px 15px 15px 15px', // 말풍선 꼬리 모양
+                      wordBreak: 'break-word',
+                      lineHeight: 1.5,
+                      fontSize: '0.95rem'
+                    }}
+                  >
+                    {msg.message}
+                  </Paper>
+
+                </Box>
+              </Box>
             </Box>
           );
         })}
@@ -248,8 +262,8 @@ const ChatRoom = () => {
         <div ref={messagesEndRef} />
       </Box>
 
-      {/* 🔹 입력창 영역 */}
-      <Box sx={{ p: 2, bgcolor: 'white', borderTop: '1px solid #e0e0e0' }}>
+      {/* 🔹 하단 입력창 영역 */}
+      <Box sx={{ p: 1, bgcolor: '#ffffff' }}> {/* 흰색 배경으로 깔끔하게 */}
         <Paper 
           component="form" 
           elevation={0}
@@ -257,15 +271,15 @@ const ChatRoom = () => {
             p: '4px 8px', 
             display: 'flex', 
             alignItems: 'center', 
-            bgcolor: '#f8f9fa', 
-            borderRadius: 3,
-            border: '1px solid #e9ecef'
+            bgcolor: '#f8f8f8', // 입력창은 연한 회색
+            borderRadius: 20, // 둥근 입력창
+            border: '1px solid #e0e0e0'
           }}
         >
           <TextField
             fullWidth
-            placeholder="메시지를 입력하세요..."
-            variant="standard" // 밑줄 제거를 위해 standard + InputProps disableUnderline 조합 사용
+            placeholder="메시지를 입력하세요"
+            variant="standard"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
@@ -277,14 +291,16 @@ const ChatRoom = () => {
           <IconButton 
             color="primary" 
             onClick={sendMessage}
-            disabled={!input.trim()} // 빈 값일 때 버튼 비활성화
+            disabled={!input.trim()}
             sx={{ 
-              p: 1.5, 
-              color: input.trim() ? '#3b82f6' : '#adb5bd',
-              transition: '0.3s'
+              color: input.trim() ? '#3b1e1e' : '#ccc', // 활성화되면 갈색(카톡 테마색) 계열
+              bgcolor: input.trim() ? '#fef01b' : 'transparent', // 활성화되면 노란 배경
+              '&:hover': { bgcolor: '#f5e61b' },
+              transition: '0.2s',
+              width: 40, height: 40
             }}
           >
-            <SendIcon />
+            <SendIcon sx={{ fontSize: 20 }} />
           </IconButton>
         </Paper>
       </Box>
