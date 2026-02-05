@@ -4,105 +4,117 @@ import { useNavigate } from 'react-router-dom';
 import { Map, MapMarker } from 'react-kakao-maps-sdk';
 import DaumPostcode from 'react-daum-postcode';
 
-// UI 컴포넌트 import
+// UI 컴포넌트 import (MUI) - 
 import {
   Box, Container, Typography, TextField, Button, Paper, Stack, IconButton,
-  FormControl, InputLabel, Select, MenuItem, InputAdornment, Dialog, DialogContent
+  FormControl, InputLabel, Select, MenuItem, InputAdornment, Dialog, DialogContent,
+  Divider, Grid
 } from '@mui/material';
+
+// 아이콘 - [ClearIcon 추가됨]
 import PhotoCamera from '@mui/icons-material/PhotoCamera';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import SearchIcon from '@mui/icons-material/Search'; // 검색 아이콘
+import SearchIcon from '@mui/icons-material/Search';
+import InfoIcon from '@mui/icons-material/Info';
+import ClearIcon from '@mui/icons-material/Clear';
 
-// 설정 파일 import
-import { IS_MOCK_MODE, API_BASE_URL } from '../config';
-
-// 카테고리 목록
-const CATEGORIES = [
-  { label: '디지털/가전', value: 'DIGITAL' },
-  { label: '가구/인테리어', value: 'FURNITURE' },
-  { label: '유아동', value: 'BABY' },
-  { label: '생활/가공식품', value: 'LIFE' },
-  { label: '스포츠/레저', value: 'SPORTS' },
-  { label: '여성잡화', value: 'WOMAN' },
-  { label: '남성잡화', value: 'MAN' },
-  { label: '게임/취미', value: 'GAME' },
-  { label: '뷰티/미용', value: 'BEAUTY' },
-  { label: '반려동물용품', value: 'PET' },
-  { label: '도서/티켓/음반', value: 'BOOK' },
-  { label: '기타', value: 'ETC' },
-];
+// 설정 및 데이터 import
+import { CATEGORIES } from '../constants/categories';
+import { API_BASE_URL, IS_MOCK_MODE, TUNNEL_HEADERS } from '../config';
 
 export default function ItemRegister({ isLoggedIn }) {
   const navigate = useNavigate();
 
-  // 1. 로그인 체크
+  // =================================================================
+  // 1. 초기 권한 체크
+  // =================================================================
   useEffect(() => {
+    // 실서비스 모드일 때만 로그인 체크 진행
     if (!IS_MOCK_MODE && !isLoggedIn) {
       alert("로그인이 필요한 서비스입니다.");
       navigate('/login');
     }
   }, [isLoggedIn, navigate]);
 
-  // 2. 입력 폼 상태 관리
+  // =================================================================
+  // 2. 상태 관리 (State Management)
+  // =================================================================
+
+  // [입력 폼 상태]
   const [values, setValues] = useState({
     title: "",
-    category: "",
+    category: "", // v.02.05 필수 선택
     price: "",
     content: "",
-    location: "", // 주소 텍스트
+    location: "", // 화면 표시용 주소 (전송 시 tradeAddress로 매핑)
   });
 
-  //  지도 좌표 State (초기값: 강남역)
+  // [지도 및 좌표 상태]
+  // coords: 지도의 중심 및 마커 위치 (기본값: 강남역)
   const [coords, setCoords] = useState({
     lat: 37.497942,
     lng: 127.027621
   });
 
-  //  주소 검색 모달 상태
-  const [openPostcode, setOpenPostcode] = useState(false);
+  // [이미지 관련 상태]
+  const [imageFile, setImageFile] = useState(null);    // 서버 전송용 파일
+  const [imagePreview, setImagePreview] = useState(null); // 화면 미리보기용 URL
 
-  const [imageFile, setImageFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
+  // [기타 UI 상태]
+  const [openPostcode, setOpenPostcode] = useState(false); // 주소 검색 모달 제어
 
+  // =================================================================
+  // 3. 핸들러 (Event Handlers)
+  // =================================================================
+
+  // 텍스트 입력 핸들러
   const handleChange = (e) => {
     const { name, value } = e.target;
     setValues({ ...values, [name]: value });
   };
 
+  // 이미지 파일 선택 핸들러 (미리보기 생성 포함)
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setImageFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
+      // FileReader를 이용해 로컬 이미지 경로 생성
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
-  //  주소 검색 완료 핸들러 (Geocoder 사용)
+  // 주소 검색 완료 핸들러 (Daum Postcode)
   const handleCompletePostcode = (data) => {
-    const fullAddress = data.address; // 선택한 주소
+    let fullAddress = data.address;
+    let extraAddress = '';
+
+    if (data.addressType === 'R') {
+      if (data.bname !== '') extraAddress += data.bname;
+      if (data.buildingName !== '') extraAddress += (extraAddress !== '' ? `, ${data.buildingName}` : data.buildingName);
+      fullAddress += (extraAddress !== '' ? ` (${extraAddress})` : '');
+    }
 
     // 1. 주소 텍스트 업데이트
     setValues({ ...values, location: fullAddress });
-    setOpenPostcode(false); // 모달 닫기
+    setOpenPostcode(false);
 
-    // 2. 주소 -> 좌표 변환 (Geocoder)
-    // index.html에 스크립트가 있으므로 window.kakao 사용 가능
-    if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
-      const geocoder = new window.kakao.maps.services.Geocoder();
-
-      geocoder.addressSearch(fullAddress, (result, status) => {
-        if (status === window.kakao.maps.services.Status.OK) {
-          const newCoords = {
-            lat: Number(result[0].y), // 위도
-            lng: Number(result[0].x), // 경도
-          };
-          setCoords(newCoords); // 지도 이동
-        }
-      });
-    }
+    // 2. 주소를 좌표로 변환 (Kakao Local API Geocoder 활용)
+    const geocoder = new window.kakao.maps.services.Geocoder();
+    geocoder.addressSearch(fullAddress, (result, status) => {
+      if (status === window.kakao.maps.services.Status.OK) {
+        setCoords({
+          lat: parseFloat(result[0].y),
+          lng: parseFloat(result[0].x)
+        });
+      }
+    });
   };
 
-  //  지도 클릭 시 마커 이동 (미세 조정)
+  // 지도 클릭 핸들러 (좌표 미세 조정)
   const handleMapClick = (_t, mouseEvent) => {
     setCoords({
       lat: mouseEvent.latLng.getLat(),
@@ -110,223 +122,259 @@ export default function ItemRegister({ isLoggedIn }) {
     });
   };
 
-  // 🚀 [등록] 핸들러
+  // 폼 제출 핸들러 (POST /api/items)
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!values.title || !values.price || !values.content || !values.category) {
-      alert("카테고리를 포함한 모든 정보를 입력해주세요!");
+    // --- [v.02.05] 유효성 검사 강화 ---
+    if (!values.category) {
+      alert("카테고리를 반드시 선택해주세요.");
+      return;
+    }
+    if (!values.title.trim()) {
+      alert("물품 제목을 입력해주세요.");
+      return;
+    }
+    if (!values.price || values.price <= 0) {
+      alert("유효한 대여료를 입력해주세요.");
+      return;
+    }
+    if (!imageFile && !IS_MOCK_MODE) {
+      alert("물품 사진은 최소 1장 이상 등록해야 합니다.");
       return;
     }
 
-    if (!imageFile) {
-      alert("상품 이미지는 필수입니다!");
-      return;
-    }
-
-    if (!values.location) {
-      alert("거래 장소를 선택해주세요!");
-      return;
-    }
-
-    // MOCK 모드 처리 (생략 가능하나 유지)
+    // [A] Mock 모드 처리
     if (IS_MOCK_MODE) {
-      alert("🎉 [테스트 모드] 상품 등록 성공!");
+      console.log("🚀 [Mock] 등록 데이터:", { ...values, coords });
+      alert("물품 등록이 완료되었습니다! (테스트 모드)");
       navigate('/');
       return;
     }
 
-    const token = localStorage.getItem('accessToken');
-    if (!token) {
-      alert("로그인 정보가 유효하지 않습니다.");
-      return;
-    }
-
+    // [B] Real 모드 (API 통신)
     try {
+      // 이미지 전송을 위한 FormData 구성
       const formData = new FormData();
-      formData.append("itemImage", imageFile);
+      formData.append('title', values.title);
+      formData.append('category', values.category); // Enum 규격 전송
+      formData.append('price', parseInt(values.price));
+      formData.append('content', values.content);
 
-      const itemData = {
-        title: values.title,
-        category: values.category,
-        content: values.content,
-        price: parseInt(values.price),
+      // ★ [UPDATE v.02.05] 명세서 필드명 매칭: location -> tradeAddress
+      formData.append('tradeAddress', values.location);
+      formData.append('tradeLatitude', coords.lat);
+      formData.append('tradeLongitude', coords.lng);
 
-        // 실제 데이터 전송
-        location: values.location, // 주소 텍스트 (예: 서울 강남구...)
-        address: values.location,
-        latitude: coords.lat,      // 📍 지도에서 선택한 위도
-        longitude: coords.lng      // 📍 지도에서 선택한 경도
-      };
+      if (imageFile) {
+        formData.append('itemImage', imageFile);
+      }
 
-      const jsonBlob = new Blob([JSON.stringify(itemData)], { type: "application/json" });
-      formData.append("itemData", jsonBlob);
-
+      const token = localStorage.getItem('accessToken');
       const response = await fetch(`${API_BASE_URL}/api/items`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          "ngrok-skip-browser-warning": "69420",
+          // multipart/form-data는 브라우저가 자동 설정하므로 Content-Type 명시 안 함
         },
         body: formData,
       });
 
       if (response.ok) {
-        alert("🎉 상품 등록 성공!");
+        alert("물품이 성공적으로 등록되었습니다!");
         navigate('/');
       } else {
-        const errText = await response.text();
-        console.error("서버 에러:", errText);
-        alert(`등록 실패.. (서버 메시지: ${errText})`);
+        const errorData = await response.json();
+        alert(errorData.message || "등록 중 오류가 발생했습니다.");
       }
     } catch (error) {
-      console.error("네트워크 에러:", error);
-      alert("서버와 연결할 수 없습니다.");
+      console.error("등록 에러:", error);
+      alert("서버와 통신 중 문제가 발생했습니다.");
     }
   };
 
+  // =================================================================
+  // 4. UI 렌더링 (기존 354줄의 UI 로직 복구)
+  // =================================================================
   return (
-    <Container maxWidth="sm" sx={{ py: 4, pb: 10 }}>
-      {/* 헤더 */}
-      <Stack direction="row" alignItems="center" sx={{ mb: 3 }}>
-        <IconButton onClick={() => navigate(-1)}>
+    <Container maxWidth="sm" sx={{ py: 5 }}>
+
+      {/* 상단 헤더 및 뒤로가기 */}
+      <Box sx={{ mb: 4, display: 'flex', alignItems: 'center' }}>
+        <IconButton onClick={() => navigate(-1)} sx={{ mr: 2, bgcolor: '#fff', boxShadow: 1 }}>
           <ArrowBackIcon />
         </IconButton>
-        <Typography variant="h5" sx={{ fontWeight: 'bold', ml: 1 }}>
-          내 물건 빌려주기
+        <Typography variant="h5" fontWeight="900" sx={{ letterSpacing: '-0.5px' }}>
+          새 물품 등록
         </Typography>
-      </Stack>
+      </Box>
 
-      <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
-        <Box component="form" onSubmit={handleSubmit}>
+      <Box component="form" onSubmit={handleSubmit} noValidate>
 
-          {/* 1. 이미지 업로드 */}
-          <Box sx={{ mb: 4, textAlign: 'center' }}>
-            <input
-              accept="image/*"
-              style={{ display: 'none' }}
-              id="upload-button"
-              type="file"
-              onChange={handleImageChange}
-            />
-            <label htmlFor="upload-button">
-              {previewUrl ? (
-                <Box
-                  component="img"
-                  src={previewUrl}
-                  sx={{
-                    width: '100%', maxHeight: '300px', objectFit: 'cover',
-                    borderRadius: 2, cursor: 'pointer', border: '1px solid #ddd'
-                  }}
-                />
-              ) : (
+        {/* 메인 폼 카드 */}
+        <Paper
+          elevation={0}
+          sx={{
+            p: 4,
+            border: '1px solid #eaeaea',
+            borderRadius: 4,
+            bgcolor: '#ffffff',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
+          }}
+        >
+          <Stack spacing={4}>
+
+            {/* 📸 이미지 업로드 섹션 */}
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+                물품 사진 등록 <Typography variant="caption" color="error" sx={{ ml: 0.5 }}>*</Typography>
+              </Typography>
+              <input
+                accept="image/*"
+                style={{ display: 'none' }}
+                id="item-image-upload"
+                type="file"
+                onChange={handleImageChange}
+              />
+              <label htmlFor="item-image-upload">
                 <Box sx={{
-                  width: '100%', height: '200px', bgcolor: '#f8f9fa', borderRadius: 2,
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', border: '2px dashed #ccc', '&:hover': { bgcolor: '#f0f0f0' }
+                  width: '100%',
+                  height: 240,
+                  bgcolor: '#f8f9fa',
+                  borderRadius: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  border: '2px dashed #dee2e6',
+                  transition: '0.2s',
+                  '&:hover': { bgcolor: '#f1f3f5', borderColor: 'primary.main' }
                 }}>
-                  <PhotoCamera sx={{ fontSize: 50, color: '#aaa' }} />
-                  <Typography color="text.secondary" sx={{ mt: 1, fontWeight: 'bold' }}>
-                    대표 사진을 등록해주세요
-                  </Typography>
+                  {imagePreview ? (
+                    <img src={imagePreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <Stack alignItems="center" spacing={1} color="text.secondary">
+                      <PhotoCamera sx={{ fontSize: 48, opacity: 0.5 }} />
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>사진을 추가해주세요 (최대 1장)</Typography>
+                    </Stack>
+                  )}
                 </Box>
-              )}
-            </label>
-          </Box>
+              </label>
+            </Box>
 
-          {/* 2. 입력 필드 */}
-          <Stack spacing={3}>
-            <TextField
-              label="글 제목"
-              name="title"
-              fullWidth
-              required
-              value={values.title}
-              onChange={handleChange}
-              placeholder="예: 맥북 프로 M3 빌려드려요"
-            />
+            <Divider />
 
-            <FormControl fullWidth required>
-              <InputLabel>카테고리</InputLabel>
-              <Select
-                name="category"
-                value={values.category}
-                label="카테고리"
-                onChange={handleChange}
-              >
-                {CATEGORIES.map((cat) => (
-                  <MenuItem key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <Stack direction="row" spacing={2}>
+            {/* 기본 정보 입력 섹션 */}
+            <Stack spacing={3}>
               <TextField
-                label="시간당 가격"
-                name="price"
-                type="number"
+                label="물품 제목"
+                name="title"
                 fullWidth
                 required
-                value={values.price}
+                placeholder="어떤 물건인가요?"
+                value={values.title}
                 onChange={handleChange}
-                InputProps={{
-                  endAdornment: <InputAdornment position="end">원</InputAdornment>,
-                }}
+                variant="outlined"
               />
+
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth required>
+                    <InputLabel>카테고리</InputLabel>
+                    <Select
+                      name="category"
+                      value={values.category}
+                      label="카테고리"
+                      onChange={handleChange}
+                    >
+                      {CATEGORIES.map((cat) => (
+                        <MenuItem key={cat.value} value={cat.value}>{cat.label}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="대여료 (시간당)"
+                    name="price"
+                    type="number"
+                    fullWidth
+                    required
+                    value={values.price}
+                    onChange={handleChange}
+                    InputProps={{
+                      endAdornment: <InputAdornment position="end">원</InputAdornment>
+                    }}
+                  />
+                </Grid>
+              </Grid>
             </Stack>
 
-            {/*  [지도 섹션] 주소 검색 및 지도 표시 */}
+            <Divider />
+
+            {/* 📍 거래 위치 설정 섹션 */}
             <Box>
-              {/* 1. 주소 표시 인풋 (클릭해도 검색됨) */}
-              <TextField
-                label="거래 희망 장소"
-                name="location"
-                fullWidth
-                required
-                value={values.location}
-                InputProps={{
-                  readOnly: true, // 직접 입력 방지
-                }}
-                placeholder="주소 검색 버튼을 눌러주세요"
-                onClick={() => setOpenPostcode(true)} // 인풋 클릭해도 검색창 열림
-                sx={{ mb: 1, cursor: 'pointer' }}
-              />
+              <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+                거래 희망 장소 <Typography variant="caption" color="error" sx={{ ml: 0.5 }}>*</Typography>
+              </Typography>
 
-              {/* 2. 주소 찾기 버튼 (⭐ 한 줄 꽉 차게 변경!) */}
-              <Button
-                variant="outlined"
-                fullWidth
-                onClick={() => setOpenPostcode(true)}
-                startIcon={<SearchIcon />}
-                sx={{ mb: 2, py: 1.5, fontWeight: 'bold', borderRadius: 2 }}
-              >
-                주소 검색하기
-              </Button>
+              <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="주소 검색 버튼을 눌러주세요"
+                  value={values.location}
+                  readOnly
+                  sx={{ bgcolor: '#f1f3f5' }}
+                />
+                <Button
+                  variant="contained"
+                  disableElevation
+                  startIcon={<SearchIcon />}
+                  onClick={() => setOpenPostcode(true)}
+                  sx={{ whiteSpace: 'nowrap', px: 3 }}
+                >
+                  주소 찾기
+                </Button>
+              </Stack>
 
-              {/* 3. 지도 컴포넌트 */}
-              <Box sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid #ddd' }}>
+              <Box sx={{
+                width: '100%',
+                height: '220px',
+                borderRadius: 3,
+                overflow: 'hidden',
+                border: '1px solid #dee2e6',
+                position: 'relative'
+              }}>
                 <Map
                   center={coords}
-                  style={{ width: "100%", height: "250px" }}
+                  style={{ width: "100%", height: "100%" }}
                   level={3}
                   onClick={handleMapClick}
                 >
                   <MapMarker position={coords}>
-                    <div style={{ padding: "5px", color: "#000", fontSize: '12px' }}>
-                      거래 위치📍
-                    </div>
+                    <Box sx={{ p: 1, color: "#000" }}>
+                      <Typography variant="caption" fontWeight="bold">거래 지점📍</Typography>
+                    </Box>
                   </MapMarker>
                 </Map>
+                <Box sx={{
+                  position: 'absolute', bottom: 10, left: 10, zIndex: 10,
+                  bgcolor: 'rgba(255,255,255,0.9)', p: '4px 8px', borderRadius: 1, border: '1px solid #ddd'
+                }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
+                    <InfoIcon sx={{ fontSize: 12, mr: 0.5 }} /> 지도를 클릭해 핀 위치를 조정하세요.
+                  </Typography>
+                </Box>
               </Box>
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                * 지도상의 위치를 클릭하면 거래 좌표를 미세 조정할 수 있습니다.
-              </Typography>
             </Box>
 
+            <Divider />
+
+            {/* 상세 설명 섹션 */}
             <TextField
-              label="자세한 설명"
+              label="상세 설명"
               name="content"
               multiline
               rows={6}
@@ -334,36 +382,48 @@ export default function ItemRegister({ isLoggedIn }) {
               required
               value={values.content}
               onChange={handleChange}
-              placeholder="물건의 상태, 거래 가능한 시간 등을 자세히 적어주세요."
+              placeholder="물건의 상태(구입 시기, 오염 여부 등)와 거래 가능 시간, 장소에 대해 자세히 적어주세요."
             />
 
+            {/* 제출 버튼 */}
             <Button
               type="submit"
               variant="contained"
               size="large"
-              sx={{ py: 1.5, fontSize: '1.1rem', fontWeight: 'bold', borderRadius: 2 }}
+              fullWidth
+              sx={{
+                py: 2,
+                fontSize: '1.1rem',
+                fontWeight: '900',
+                borderRadius: 3,
+                boxShadow: '0 8px 16px rgba(25, 118, 210, 0.2)'
+              }}
             >
-              등록 완료
+              물품 등록하기
             </Button>
           </Stack>
+        </Paper>
+      </Box>
+
+      {/* [주소 검색 모달] Daum Postcode Dialog */}
+      <Dialog
+        open={openPostcode}
+        onClose={() => setOpenPostcode(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="h6" fontWeight="bold">주소 검색</Typography>
+          <IconButton onClick={() => setOpenPostcode(false)}><ClearIcon /></IconButton>
         </Box>
-
-        {/*  [주소 검색 모달] DaumPostcode */}
-        <Dialog
-          open={openPostcode}
-          onClose={() => setOpenPostcode(false)}
-          fullWidth
-          maxWidth="sm"
-        >
-          <DialogContent sx={{ p: 0, height: '500px' }}>
-            <DaumPostcode
-              onComplete={handleCompletePostcode}
-              style={{ height: '100%' }}
-            />
-          </DialogContent>
-        </Dialog>
-
-      </Paper>
+        <DialogContent sx={{ p: 0, height: '500px' }}>
+          <DaumPostcode
+            onComplete={handleCompletePostcode}
+            style={{ height: '100%' }}
+          />
+        </DialogContent>
+      </Dialog>
     </Container>
   );
 }

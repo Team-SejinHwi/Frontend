@@ -9,7 +9,7 @@ import LockOutlineIcon from '@mui/icons-material/LockOutline';
 
 
 // ✅ Config에서 API_BASE_URL도 가져와야 통신이 된다.
-import { IS_MOCK_MODE, API_BASE_URL } from '../config';
+import { API_BASE_URL, IS_MOCK_MODE, TUNNEL_HEADERS } from '../config';
 
 export default function Login({ setIsLoggedIn }) {
   const navigate = useNavigate();
@@ -43,7 +43,7 @@ export default function Login({ setIsLoggedIn }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': '69420'
+          ...TUNNEL_HEADERS
         },
         body: JSON.stringify(data),
       });
@@ -70,7 +70,7 @@ export default function Login({ setIsLoggedIn }) {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${accessToken}`, // 방금 받은 따끈한 토큰 사용
-              'ngrok-skip-browser-warning': '69420'
+              ...TUNNEL_HEADERS
             }
           });
 

@@ -22,7 +22,7 @@ import { koKR } from '@mui/x-date-pickers/locales';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ko'; 
 
-import { API_BASE_URL, IS_MOCK_MODE } from '../config'; 
+import { API_BASE_URL, IS_MOCK_MODE, TUNNEL_HEADERS } from '../config';
 
 // 한국어 로케일 설정
 dayjs.locale('ko');
@@ -125,7 +125,7 @@ const RentalModal = ({ open, onClose, item }) => {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
-          'ngrok-skip-browser-warning': '69420',
+          ...TUNNEL_HEADERS,
         },
         body: JSON.stringify(requestBody),
       });

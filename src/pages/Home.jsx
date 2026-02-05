@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Map, MapMarker } from 'react-kakao-maps-sdk'; // 지도 라이브러리
 
@@ -6,37 +6,24 @@ import { Map, MapMarker } from 'react-kakao-maps-sdk'; // 지도 라이브러리
 import {
   AppBar, Toolbar, Button, Typography, Box, Container, Stack, Paper,
   Grid, Fab, TextField, InputAdornment, Chip, ToggleButton, ToggleButtonGroup,
-  CircularProgress
+  CircularProgress, IconButton
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import MyLocationIcon from '@mui/icons-material/MyLocation'; // 내 위치 아이콘
 import MapIcon from '@mui/icons-material/Map'; // 지도 아이콘
 import ListIcon from '@mui/icons-material/List'; // 리스트 아이콘
+// [NEW] 스크롤 화살표 아이콘 추가
+import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
+import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 
-// 데이터 및 설정 import
+// 설정 및 데이터 import
+import { CATEGORIES } from '../constants/categories';
 import ItemCard from '../components/ItemCard';
 import { mockItems } from '../mocks/mockData';
-import { IS_MOCK_MODE, API_BASE_URL } from '../config';
+import { API_BASE_URL, IS_MOCK_MODE, TUNNEL_HEADERS } from '../config';
 
 const MAIN_IMAGE_URL = "https://i.postimg.cc/MHNP5WB5/image.jpg";
-
-// 카테고리 목록
-const CATEGORIES = [
-  { label: '전체', value: '' },
-  { label: '디지털/가전', value: 'DIGITAL' },
-  { label: '가구/인테리어', value: 'FURNITURE' },
-  { label: '유아동', value: 'BABY' },
-  { label: '생활/가공식품', value: 'LIFE' },
-  { label: '스포츠/레저', value: 'SPORTS' },
-  { label: '여성잡화', value: 'WOMAN' },
-  { label: '남성잡화', value: 'MAN' },
-  { label: '게임/취미', value: 'GAME' },
-  { label: '뷰티/미용', value: 'BEAUTY' },
-  { label: '반려동물용품', value: 'PET' },
-  { label: '도서/티켓/음반', value: 'BOOK' },
-  { label: '기타', value: 'ETC' },
-];
 
 // 🧮 두 좌표(위도, 경도) 사이의 직선 거리 계산 함수
 // 단위: km (킬로미터)
@@ -57,7 +44,7 @@ function getDistanceFromLatLonInKm(lat1, lng1, lat2, lng2) {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
   // 4. 지구 반지름에 중심각을 곱해 실제 거리(호의 길이)를 산출.
-  return R * c; 
+  return R * c;
 }
 
 // 📐 각도(Degree)를 라디안(Radian)으로 변환하는 보조 함수
@@ -90,15 +77,18 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
 
   const [loading, setLoading] = useState(false); // 로딩 상태
 
+  // [NEW] 카테고리 스크롤 제어를 위한 Ref
+  const categoryScrollRef = useRef(null);
+
   const myEmail = localStorage.getItem('userEmail') || '';
   const myName = localStorage.getItem('userName') || myEmail.split('@')[0] || '사용자';
 
   // =================================================================
-  // 2. 데이터 로드 함수 (핵심 로직 - 위치 기반 필터링 & API v.02.02 limit 적용)
+  // 2. 데이터 로드 함수 (핵심 로직 - 위치 기반 필터링 & API v.02.05 limit 적용)
   // =================================================================
   const fetchItems = (
-    targetCategory = category, 
-    targetKeyword = keyword, 
+    targetCategory = category,
+    targetKeyword = keyword,
     targetLoc = locationFilter
   ) => {
     setLoading(true);
@@ -112,20 +102,20 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
         if (targetCategory) filtered = filtered.filter(i => i.category === targetCategory);
         // 2. 검색어 필터
         if (targetKeyword) filtered = filtered.filter(i => i.title.includes(targetKeyword));
-        
+
         // 3. 위치 기반 필터 (내 주변 5km)
         if (targetLoc.active && targetLoc.lat && targetLoc.lng) {
-            console.log("📍 [Mock] 내 주변 5km 필터링 시작:", targetLoc);
-            filtered = filtered.filter(item => {
-                // 좌표가 없는 아이템은 제외
-                if (!item.tradeLatitude || !item.tradeLongitude) return false;
-                
-                const dist = getDistanceFromLatLonInKm(
-                    targetLoc.lat, targetLoc.lng,
-                    item.tradeLatitude, item.tradeLongitude
-                );
-                return dist <= 5; // 5km 이내만 통과
-            });
+          console.log("📍 [Mock] 내 주변 5km 필터링 시작:", targetLoc);
+          filtered = filtered.filter(item => {
+            // 좌표가 없는 아이템은 제외
+            if (!item.tradeLatitude || !item.tradeLongitude) return false;
+
+            const dist = getDistanceFromLatLonInKm(
+              targetLoc.lat, targetLoc.lng,
+              item.tradeLatitude, item.tradeLongitude
+            );
+            return dist <= 5; // 5km 이내만 통과
+          });
         }
 
         setItems(filtered);
@@ -134,25 +124,27 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
       return;
     }
 
-    // [B] Real 모드 (v.02.02 API 명세 반영)
+    // [B] Real 모드 (v.02.05 API 명세 반영)
     const queryParams = new URLSearchParams();
 
-    // ★ [UPDATE v.02.02] limit 파라미터 추가
-    // 설명: API 기본값이 5개로 줄어들었기 때문에, 지도 표시 등을 위해 충분한 수량(예: 100개)을 명시적으로 요청합니다.
-    queryParams.append('limit', 100); 
+    // ★ [UPDATE v.02.05] limit 파라미터 확정 반영
+    // 설명: v.02.05 명세서에서 리스트 조회 시 limit 파라미터가 공식 확정되었습니다.
+    // 기본값은 100개이며, 원활한 검색 결과를 위해 100개를 명시적으로 요청합니다.
+    queryParams.append('limit', 100);
 
     if (targetCategory) queryParams.append('category', targetCategory);
     if (targetKeyword) queryParams.append('keyword', targetKeyword);
-    
+
     // 위치 필터 파라미터 추가
     if (targetLoc.active && targetLoc.lat && targetLoc.lng) {
-        queryParams.append('lat', targetLoc.lat);
-        queryParams.append('lng', targetLoc.lng);
-        queryParams.append('radius', 5); // 5km 고정
+      queryParams.append('lat', targetLoc.lat);
+      queryParams.append('lng', targetLoc.lng);
+      queryParams.append('radius', 5); // 5km 고정
     }
 
+    //  
     fetch(`${API_BASE_URL}/api/items?${queryParams.toString()}`, {
-      headers: { "ngrok-skip-browser-warning": "69420" }
+      headers: { ...TUNNEL_HEADERS } // config.js에서 정의한 헤더를 그대로 가져옵니다.
     })
       .then(res => res.json())
       .then(data => {
@@ -177,53 +169,68 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
   // =================================================================
   // 3. 핸들러 (Event Handlers)
   // =================================================================
-  
+
   // 내 주변 찾기 버튼 클릭
   const handleNearMeClick = () => {
     // 이미 활성화 상태라면 -> 필터 해제
     if (locationFilter.active) {
-        const resetLoc = { active: false, lat: null, lng: null };
-        setLocationFilter(resetLoc);
-        fetchItems(category, keyword, resetLoc);
-        return;
+      const resetLoc = { active: false, lat: null, lng: null };
+      setLocationFilter(resetLoc);
+      fetchItems(category, keyword, resetLoc);
+      return;
     }
 
     // 비활성화 상태라면 -> GPS로 위치 잡고 필터 적용
     if (!navigator.geolocation) {
-        alert("브라우저가 위치 정보를 지원하지 않습니다.");
-        return;
+      alert("브라우저가 위치 정보를 지원하지 않습니다.");
+      return;
     }
 
     setLoading(true); // 위치 잡는 동안 로딩
     navigator.geolocation.getCurrentPosition(
-        (pos) => {
-            const newLoc = {
-                active: true,
-                lat: pos.coords.latitude,
-                lng: pos.coords.longitude
-            };
-            
-            // 1. 상태 업데이트
-            setLocationFilter(newLoc);
-            // 2. 지도 뷰로 자동 전환 (사용자 경험 향상)
-            setViewMode('MAP');
-            // 3. 데이터 다시 가져오기
-            fetchItems(category, keyword, newLoc);
-            
-            alert("📍 내 주변 5km 상품을 검색합니다.");
-        },
-        (err) => {
-            console.error(err);
-            alert("위치 정보를 가져올 수 없습니다. (위치 권한을 허용해주세요)");
-            setLoading(false);
-        }
+      (pos) => {
+        const newLoc = {
+          active: true,
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude
+        };
+
+        // 1. 상태 업데이트
+        setLocationFilter(newLoc);
+        // 2. 지도 뷰로 자동 전환 (사용자 경험 향상)
+        setViewMode('MAP');
+        // 3. 데이터 다시 가져오기
+        fetchItems(category, keyword, newLoc);
+
+        alert("📍 내 주변 5km 상품을 검색합니다.");
+      },
+      (err) => {
+        console.error(err);
+        alert("위치 정보를 가져올 수 없습니다. (위치 권한을 허용해주세요)");
+        setLoading(false);
+      }
     );
   };
 
-  // 카테고리 클릭
-  const handleCategoryClick = (newCategory) => {
+  // 카테고리 클릭 핸들러 (수정됨)
+  const handleCategoryClick = (selectedCategory) => {
+    // 1. 이미 선택된 카테고리를 다시 눌렀다면? -> 해제 (빈 값)
+    // 2. 새로운 카테고리라면? -> 해당 카테고리로 설정
+    const newCategory = category === selectedCategory ? '' : selectedCategory;
+
     setCategory(newCategory);
     fetchItems(newCategory, keyword, locationFilter);
+  };
+
+  // [NEW] 카테고리 좌우 스크롤 핸들러
+  const handleCategoryScroll = (direction) => {
+    if (categoryScrollRef.current) {
+      const scrollAmount = 300; // 한 번에 이동할 픽셀 수
+      categoryScrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth' // 부드럽게 이동
+      });
+    }
   };
 
   // 검색
@@ -289,76 +296,129 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
       <Container sx={{ mt: -4, mb: 4, position: 'relative', zIndex: 2 }}>
         <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
           <Stack spacing={2}>
-            
+
             {/* 1. 검색바 & 내주변 버튼 */}
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                <TextField
-                    fullWidth
-                    placeholder="어떤 물건을 찾으시나요?"
-                    value={keyword}
-                    onChange={(e) => setKeyword(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    InputProps={{
-                        startAdornment: <InputAdornment position="start"><SearchIcon color="action" /></InputAdornment>,
-                    }}
-                    sx={{ bgcolor: 'white' }}
-                />
-                
-                {/* 내 주변 찾기 버튼 */}
-                <Button 
-                    variant={locationFilter.active ? "contained" : "outlined"} 
-                    color={locationFilter.active ? "success" : "primary"}
-                    onClick={handleNearMeClick}
-                    startIcon={<MyLocationIcon />}
-                    sx={{ minWidth: '140px', fontWeight: 'bold', whiteSpace: 'nowrap' }}
-                >
-                    {locationFilter.active ? "필터 해제" : "내 주변 찾기"}
-                </Button>
-                
-                <Button
-                    variant="contained"
-                    onClick={handleSearch}
-                    sx={{ fontWeight: 'bold', minWidth: '80px' }}
-                >
-                    검색
-                </Button>
+              <TextField
+                fullWidth
+                placeholder="어떤 물건을 찾으시나요?"
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                onKeyPress={handleKeyPress}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start"><SearchIcon color="action" /></InputAdornment>,
+                }}
+                sx={{ bgcolor: 'white' }}
+              />
+
+              {/* 내 주변 찾기 버튼 */}
+              <Button
+                variant={locationFilter.active ? "contained" : "outlined"}
+                color={locationFilter.active ? "success" : "primary"}
+                onClick={handleNearMeClick}
+                startIcon={<MyLocationIcon />}
+                sx={{ minWidth: '140px', fontWeight: 'bold', whiteSpace: 'nowrap' }}
+              >
+                {locationFilter.active ? "필터 해제" : "내 주변 찾기"}
+              </Button>
+
+              <Button
+                variant="contained"
+                onClick={handleSearch}
+                sx={{ fontWeight: 'bold', minWidth: '80px' }}
+              >
+                검색
+              </Button>
             </Stack>
 
-            {/* 2. 카테고리 & 뷰 모드 토글 */}
+            {/* 2. 카테고리 & 뷰 모드 토글 (수정됨: 화살표 스크롤 추가) */}
             <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
-                {/* 카테고리 스크롤 영역 */}
-                <Box sx={{
-                    display: 'flex', gap: 1, overflowX: 'auto', flex: 1, pb: 0.5,
-                    '::-webkit-scrollbar': { height: '4px' },
-                    '::-webkit-scrollbar-thumb': { backgroundColor: '#ddd', borderRadius: '3px' }
-                }}>
-                    {CATEGORIES.map((cat) => (
-                        <Chip
-                            key={cat.value}
-                            label={cat.label}
-                            clickable
-                            color={category === cat.value ? "primary" : "default"}
-                            variant={category === cat.value ? "filled" : "outlined"}
-                            onClick={() => handleCategoryClick(cat.value)}
-                        />
-                    ))}
+
+              {/* [NEW] 화살표가 포함된 카테고리 영역 */}
+              <Stack direction="row" alignItems="center" spacing={1} sx={{ flex: 1, overflow: 'hidden' }}>
+
+                {/* 왼쪽 이동 버튼 */}
+                <IconButton
+                  onClick={() => handleCategoryScroll('left')}
+                  size="small"
+                  sx={{
+                    border: '1px solid #eee',
+                    bgcolor: 'white',
+                    '&:hover': { bgcolor: '#f5f5f5' }
+                  }}
+                >
+                  <ArrowBackIosNewIcon fontSize="inherit" />
+                </IconButton>
+
+                {/* 카테고리 스크롤 영역 (스크롤바 숨김 처리) */}
+                <Box
+                  ref={categoryScrollRef} // Ref 연결
+                  sx={{
+                    display: 'flex',
+                    gap: 1,
+                    overflowX: 'auto',
+                    whiteSpace: 'nowrap',
+                    pb: 0.5,
+                    scrollBehavior: 'smooth',
+                    // 스크롤바 숨기기 (크롬, 사파리, 엣지 등)
+                    '::-webkit-scrollbar': { display: 'none' },
+                    // 파이어폭스 등
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none',
+                  }}
+                >
+                  {/* ✨ 전체 보기 버튼 */}
+                  <Chip
+                    label="전체"
+                    clickable
+                    color={category === '' ? "primary" : "default"}
+                    variant={category === '' ? "filled" : "outlined"}
+                    onClick={() => handleCategoryClick('')}
+                    sx={{ fontWeight: category === '' ? 'bold' : 'normal' }}
+                  />
+                  {/* 카테고리 목록 */}
+                  {CATEGORIES.map((cat) => (
+                    <Chip
+                      key={cat.value}
+                      label={cat.label}
+                      clickable
+                      color={category === cat.value ? "primary" : "default"}
+                      variant={category === cat.value ? "filled" : "outlined"}
+                      onClick={() => handleCategoryClick(cat.value)}
+                    />
+                  ))}
                 </Box>
 
-                {/* 리스트/지도 뷰 토글 버튼 */}
-                <ToggleButtonGroup
-                    value={viewMode}
-                    exclusive
-                    onChange={(e, newMode) => { if (newMode) setViewMode(newMode); }}
-                    size="small"
-                    color="primary"
+                {/* 오른쪽 이동 버튼 */}
+                <IconButton
+                  onClick={() => handleCategoryScroll('right')}
+                  size="small"
+                  sx={{
+                    border: '1px solid #eee',
+                    bgcolor: 'white',
+                    '&:hover': { bgcolor: '#f5f5f5' }
+                  }}
                 >
-                    <ToggleButton value="LIST" sx={{ fontWeight: 'bold' }}>
-                        <ListIcon sx={{ mr: 0.5 }} /> 리스트
-                    </ToggleButton>
-                    <ToggleButton value="MAP" sx={{ fontWeight: 'bold' }}>
-                        <MapIcon sx={{ mr: 0.5 }} /> 지도
-                    </ToggleButton>
-                </ToggleButtonGroup>
+                  <ArrowForwardIosIcon fontSize="inherit" />
+                </IconButton>
+              </Stack>
+
+              {/* 리스트/지도 뷰 토글 버튼 */}
+              <ToggleButtonGroup
+                value={viewMode}
+                exclusive
+                onChange={(e, newMode) => { if (newMode) setViewMode(newMode); }}
+                size="small"
+                color="primary"
+                sx={{ flexShrink: 0 }} // 버튼이 찌그러지지 않게 고정
+              >
+                <ToggleButton value="LIST" sx={{ fontWeight: 'bold' }}>
+                  <ListIcon sx={{ mr: 0.5 }} /> 리스트
+                </ToggleButton>
+                <ToggleButton value="MAP" sx={{ fontWeight: 'bold' }}>
+                  <MapIcon sx={{ mr: 0.5 }} /> 지도
+                </ToggleButton>
+              </ToggleButtonGroup>
             </Stack>
           </Stack>
         </Paper>
@@ -373,73 +433,73 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
         </Typography>
 
         {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>
         ) : items.length === 0 ? (
-            <Box sx={{ textAlign: 'center', py: 10 }}>
-                <Typography variant="h6" color="text.secondary">조건에 맞는 상품이 없습니다.</Typography>
-                {locationFilter.active && <Typography variant="body2" color="text.secondary">반경을 넓히거나 다른 지역에서 검색해보세요.</Typography>}
-            </Box>
+          <Box sx={{ textAlign: 'center', py: 10 }}>
+            <Typography variant="h6" color="text.secondary">조건에 맞는 상품이 없습니다.</Typography>
+            {locationFilter.active && <Typography variant="body2" color="text.secondary">반경을 넓히거나 다른 지역에서 검색해보세요.</Typography>}
+          </Box>
         ) : (
-            // 뷰 모드에 따라 분기 처리
-            viewMode === 'LIST' ? (
-                // [A] 리스트 뷰 (기존 Grid)
-                <Grid container spacing={3}>
-                    {items.map((item) => (
-                        <Grid item key={item.itemId || item.id} xs={12} sm={6} md={3}>
-                            <ItemCard item={item} />
-                        </Grid>
-                    ))}
+          // 뷰 모드에 따라 분기 처리
+          viewMode === 'LIST' ? (
+            // [A] 리스트 뷰 (기존 Grid)
+            <Grid container spacing={3}>
+              {items.map((item) => (
+                <Grid item key={item.itemId || item.id} xs={12} sm={6} md={3}>
+                  <ItemCard item={item} />
                 </Grid>
-            ) : (
-                // [B] 지도 뷰 (카카오맵)
-                <Box sx={{ width: '100%', height: '500px', borderRadius: 3, overflow: 'hidden', border: '1px solid #ddd' }}>
-                    <Map
-                        // 지도의 중심좌표 (내 위치가 있으면 내 위치, 없으면 첫 번째 아이템 위치, 다 없으면 강남역)
-                        center={
-                            locationFilter.active && locationFilter.lat 
-                            ? { lat: locationFilter.lat, lng: locationFilter.lng } 
-                            : (items[0]?.tradeLatitude 
-                                ? { lat: items[0].tradeLatitude, lng: items[0].tradeLongitude }
-                                : { lat: 37.497942, lng: 127.027621 })
-                        }
-                        style={{ width: "100%", height: "100%" }}
-                        level={locationFilter.active ? 6 : 8} // 내 주변이면 좀 더 확대
-                    >
-                        {/* 내 위치 마커 (파란색) */}
-                        {locationFilter.active && locationFilter.lat && (
-                            <MapMarker
-                                position={{ lat: locationFilter.lat, lng: locationFilter.lng }}
-                                image={{
-                                    src: "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png", // 빨간 마커 (내 위치)
-                                    size: { width: 64, height: 69 }, 
-                                    options: { offset: { x: 27, y: 69 } }
-                                }}
-                            />
-                        )}
+              ))}
+            </Grid>
+          ) : (
+            // [B] 지도 뷰 (카카오맵)
+            <Box sx={{ width: '100%', height: '500px', borderRadius: 3, overflow: 'hidden', border: '1px solid #ddd' }}>
+              <Map
+                // 지도의 중심좌표 (내 위치가 있으면 내 위치, 없으면 첫 번째 아이템 위치, 다 없으면 강남역)
+                center={
+                  locationFilter.active && locationFilter.lat
+                    ? { lat: locationFilter.lat, lng: locationFilter.lng }
+                    : (items[0]?.tradeLatitude
+                      ? { lat: items[0].tradeLatitude, lng: items[0].tradeLongitude }
+                      : { lat: 37.497942, lng: 127.027621 })
+                }
+                style={{ width: "100%", height: "100%" }}
+                level={locationFilter.active ? 6 : 8} // 내 주변이면 좀 더 확대
+              >
+                {/* 내 위치 마커 (파란색) */}
+                {locationFilter.active && locationFilter.lat && (
+                  <MapMarker
+                    position={{ lat: locationFilter.lat, lng: locationFilter.lng }}
+                    image={{
+                      src: "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png", // 빨간 마커 (내 위치)
+                      size: { width: 64, height: 69 },
+                      options: { offset: { x: 27, y: 69 } }
+                    }}
+                  />
+                )}
 
-                        {/* 상품 마커들 (노란색) */}
-                        {items.map((item) => (
-                            item.tradeLatitude && item.tradeLongitude && (
-                                <MapMarker
-                                    key={item.itemId}
-                                    position={{ lat: item.tradeLatitude, lng: item.tradeLongitude }}
-                                    onClick={() => navigate(`/items/${item.itemId}`)} // 마커 클릭 시 상세 페이지로
-                                    image={{
-                                        src: "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png", // 별 마커 (상품)
-                                        size: { width: 24, height: 35 }
-                                    }}
-                                >
-                                    {/* 마커 위 툴팁 (상품명) */}
-                                    <div style={{ padding: "5px", color: "#000", fontSize: '12px', borderRadius:'4px' }}>
-                                        {item.title} <br/>
-                                        <span style={{ fontWeight:'bold', color:'blue' }}>{item.price?.toLocaleString()}원</span>
-                                    </div>
-                                </MapMarker>
-                            )
-                        ))}
-                    </Map>
-                </Box>
-            )
+                {/* 상품 마커들 (노란색) */}
+                {items.map((item) => (
+                  item.tradeLatitude && item.tradeLongitude && (
+                    <MapMarker
+                      key={item.itemId}
+                      position={{ lat: item.tradeLatitude, lng: item.tradeLongitude }}
+                      onClick={() => navigate(`/items/${item.itemId}`)} // 마커 클릭 시 상세 페이지로
+                      image={{
+                        src: "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png", // 별 마커 (상품)
+                        size: { width: 24, height: 35 }
+                      }}
+                    >
+                      {/* 마커 위 툴팁 (상품명) */}
+                      <div style={{ padding: "5px", color: "#000", fontSize: '12px', borderRadius: '4px' }}>
+                        {item.title} <br />
+                        <span style={{ fontWeight: 'bold', color: 'blue' }}>{item.price?.toLocaleString()}원</span>
+                      </div>
+                    </MapMarker>
+                  )
+                ))}
+              </Map>
+            </Box>
+          )
         )}
       </Container>
 

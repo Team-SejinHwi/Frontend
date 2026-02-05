@@ -3,7 +3,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, Rating, TextField, Typography, Box, Alert
 } from '@mui/material';
-import { API_BASE_URL, IS_MOCK_MODE } from '../config';
+import { API_BASE_URL, IS_MOCK_MODE, TUNNEL_HEADERS } from '../config';
 
 // onSuccess: 리뷰 등록 성공 시 부모 컴포넌트(SentRequests)의 목록을 새로고침하기 위한 콜백 함수
 export default function ReviewModal({ open, onClose, rentalId, onSuccess }) {
@@ -47,7 +47,7 @@ export default function ReviewModal({ open, onClose, rentalId, onSuccess }) {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`, // 인증 토큰 필수
-          'ngrok-skip-browser-warning': '69420'
+          ...TUNNEL_HEADERS
         },
         body: JSON.stringify({
           rentalId: rentalId, // 어떤 대여 건인지 식별

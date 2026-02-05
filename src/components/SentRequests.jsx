@@ -5,18 +5,24 @@ import {
     CircularProgress, Grid, Alert
 } from '@mui/material';
 import dayjs from 'dayjs';
-import RateReviewIcon from '@mui/icons-material/RateReview'; // 리뷰 아이콘 추가
 
-import { API_BASE_URL, IS_MOCK_MODE } from '../config';
+// 아이콘
+import RateReviewIcon from '@mui/icons-material/RateReview'; // 리뷰 아이콘
+import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn'; // [NEW] 반납 아이콘
+
+import { API_BASE_URL, IS_MOCK_MODE, TUNNEL_HEADERS } from '../config';
 import { mockMyRentals } from '../mocks/mockData';
-import ReviewModal from './ReviewModal'; // 👈 새로 만든 리뷰 모달 컴포넌트
+import ReviewModal from './ReviewModal'; 
 
-// 상태별 뱃지 디자인 설정
+// =================================================================
+// 0. 상태별 뱃지 디자인 설정 (v.02.05 명세 반영)
+// =================================================================
 const STATUS_CONFIG = {
     WAITING: { label: '승인 대기중', color: 'warning', variant: 'outlined' },
-    APPROVED: { label: '예약 확정', color: 'success', variant: 'filled' },
+    APPROVED: { label: '예약 확정', color: 'success', variant: 'outlined' }, // 승인됨 -> 아직 대여 시작 전
+    RENTING: { label: '대여 중', color: 'primary', variant: 'filled' },      // [NEW] 현재 대여 중 (반납 필요)
+    RETURNED: { label: '반납 완료', color: 'default', variant: 'filled' },   // [NEW] 반납 완료 (리뷰 작성 가능)
     REJECTED: { label: '거절됨', color: 'error', variant: 'filled' },
-    COMPLETED: { label: '이용 완료', color: 'default', variant: 'filled' }, // 반납 완료 상태
     CANCELED: { label: '취소함', color: 'default', variant: 'outlined' }
 };
 
@@ -49,7 +55,7 @@ export default function SentRequests() {
             const response = await fetch(`${API_BASE_URL}/api/rentals/my`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
-                    'ngrok-skip-browser-warning': '69420'
+                    ...TUNNEL_HEADERS
                 }
             });
 
@@ -79,7 +85,6 @@ export default function SentRequests() {
 
         if (IS_MOCK_MODE) {
             alert("[Mock] 취소되었습니다.");
-            // Mock 상태 업데이트 흉내
             setRentals(prev => prev.map(r => r.rentalId === rentalId ? { ...r, status: 'CANCELED' } : r));
             return;
         }
@@ -90,7 +95,7 @@ export default function SentRequests() {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
-                    'ngrok-skip-browser-warning': '69420'
+                    ...TUNNEL_HEADERS
                 }
             });
 
@@ -103,6 +108,39 @@ export default function SentRequests() {
             }
         } catch (error) {
             console.error("취소 오류:", error);
+        }
+    };
+
+    // [NEW] 물품 반납 핸들러 (POST /api/rentals/{id}/return) - v.02.05 추가
+    const handleReturn = async (rentalId) => {
+        if (!window.confirm("물건을 반납하시겠습니까?\n반납 후에는 상태를 되돌릴 수 없습니다.")) return;
+
+        if (IS_MOCK_MODE) {
+            alert("[Mock] 반납이 완료되었습니다.");
+            setRentals(prev => prev.map(r => r.rentalId === rentalId ? { ...r, status: 'RETURNED' } : r));
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('accessToken');
+            const response = await fetch(`${API_BASE_URL}/api/rentals/${rentalId}/return`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    ...TUNNEL_HEADERS
+                }
+            });
+
+            if (response.ok) {
+                alert("반납 처리가 완료되었습니다.");
+                fetchMyRentals(); // 목록 갱신 (상태 변경 확인)
+            } else {
+                const err = await response.json();
+                alert(err.message || "반납 처리 실패");
+            }
+        } catch (error) {
+            console.error("반납 오류:", error);
+            alert("서버 통신 중 오류가 발생했습니다.");
         }
     };
 
@@ -128,6 +166,7 @@ export default function SentRequests() {
             ) : (
                 <Stack spacing={2}>
                     {rentals.map((rental) => {
+                        // 정의되지 않은 상태가 올 경우 기본값 처리
                         const statusStyle = STATUS_CONFIG[rental.status] || STATUS_CONFIG.WAITING;
 
                         return (
@@ -167,7 +206,7 @@ export default function SentRequests() {
                                                 sx={{ mb: 1 }}
                                             />
                                             <Box>
-                                                {/* Case 1: 대기 상태일 때 -> [요청 취소] 버튼 */}
+                                                {/* Case 1: 대기 상태 (WAITING) -> [요청 취소] */}
                                                 {rental.status === 'WAITING' && (
                                                     <Button
                                                         variant="outlined"
@@ -179,11 +218,25 @@ export default function SentRequests() {
                                                     </Button>
                                                 )}
 
-                                                {/* Case 2: 이용 완료(반납 완료) 상태일 때 -> [후기 작성] 버튼 */}
-                                                {(rental.status === 'COMPLETED' || rental.status === 'RETURNED') && (
+                                                {/* Case 2: 대여 중 (RENTING) -> [반납 하기] (NEW) */}
+                                                {rental.status === 'RENTING' && (
                                                     <Button
                                                         variant="contained"
                                                         color="primary"
+                                                        size="small"
+                                                        startIcon={<AssignmentReturnIcon />}
+                                                        onClick={() => handleReturn(rental.rentalId)}
+                                                        sx={{ fontWeight: 'bold' }}
+                                                    >
+                                                        반납 하기
+                                                    </Button>
+                                                )}
+
+                                                {/* Case 3: 반납 완료 (RETURNED) -> [후기 작성] */}
+                                                {rental.status === 'RETURNED' && (
+                                                    <Button
+                                                        variant="contained"
+                                                        color="success" // 리뷰는 긍정적인 느낌의 success 컬러 추천
                                                         size="small"
                                                         startIcon={<RateReviewIcon />}
                                                         onClick={() => handleOpenReview(rental.rentalId)}

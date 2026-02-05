@@ -1,11 +1,12 @@
-// src/config.js  -  설정 파일 중앙 관리 (Global Configuration)
+// src/config.js
 
-// 🚩 [스위치] true: 나 혼자 테스트 모드 / false: 백엔드 연동 실전 모드
-// 여기서 한 번만 바꾸면 모든 페이지에 적용됩니다!
-export const IS_MOCK_MODE = true;
-;
+// 🚩 [스위치] true: 테스트 모드 / false: 실전 모드
+export const IS_MOCK_MODE = true; // 실전 모드로 변경 시
 
-// 🔗 [주소] 휘님의 ngrok 서버 주소 (바뀌면 여기서만 수정하세요)
-// 마지막에 슬래시(/)는 뺍니다.
-// export const API_BASE_URL = "https://ossie-noncollectivistic-enduringly.ngrok-free.dev";
-export const API_BASE_URL = "";
+// 🔗 [주소] localtunnel 주소로 업데이트
+export const API_BASE_URL = "https://sour-mugs-read.loca.lt"; 
+
+// 🔑 [헤더] 터널링 도구용 경고 우회 헤더 (중앙 관리)
+export const TUNNEL_HEADERS = {
+  'Bypass-Tunnel-Reminder': 'true'
+};

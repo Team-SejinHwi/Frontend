@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  List, ListItem, ListItemText, ListItemAvatar, Avatar, 
-  Typography, Paper, CircularProgress, Divider, Box, Badge 
+import {
+    List, ListItem, ListItemText, ListItemAvatar, Avatar,
+    Typography, Paper, CircularProgress, Divider, Box, Badge
 } from '@mui/material';
 import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
 import PersonIcon from '@mui/icons-material/Person';
 import dayjs from 'dayjs';
-import { API_BASE_URL, IS_MOCK_MODE } from '../config';
+import { API_BASE_URL, IS_MOCK_MODE, TUNNEL_HEADERS } from '../config';
 
 export default function ChatList() {
     const [rooms, setRooms] = useState([]);
@@ -20,19 +20,19 @@ export default function ChatList() {
                 // [A] Mock 모드
                 if (IS_MOCK_MODE) {
                     setRooms([
-                        { 
-                            roomId: 15, 
-                            itemTitle: "맥북 프로 대여", 
+                        {
+                            roomId: 15,
+                            itemTitle: "맥북 프로 대여",
                             partnerName: "테스트유저",
-                            lastMessage: "안녕하세요! 거래 가능하신가요?", 
-                            lastMessageTime: "2026-02-01T14:00:00" 
+                            lastMessage: "안녕하세요! 거래 가능하신가요?",
+                            lastMessageTime: "2026-02-01T14:00:00"
                         },
-                        { 
-                            roomId: 16, 
-                            itemTitle: "캠핑 텐트", 
+                        {
+                            roomId: 16,
+                            itemTitle: "캠핑 텐트",
                             partnerName: "캠핑족",
-                            lastMessage: "네 확인했습니다.", 
-                            lastMessageTime: "2026-01-31T10:30:00" 
+                            lastMessage: "네 확인했습니다.",
+                            lastMessageTime: "2026-01-31T10:30:00"
                         }
                     ]);
                     setLoading(false);
@@ -44,9 +44,9 @@ export default function ChatList() {
                 if (!token) return;
 
                 const response = await fetch(`${API_BASE_URL}/api/chat/rooms`, {
-                    headers: { 
+                    headers: {
                         'Authorization': `Bearer ${token}`,
-                        'ngrok-skip-browser-warning': '69420'
+                        ...TUNNEL_HEADERS
                     }
                 });
 
@@ -94,17 +94,20 @@ export default function ChatList() {
                                                 {room.partnerName || "상대방"}
                                             </Typography>
                                             {room.lastMessage ? (
-                                                room.lastMessage.length > 20 
-                                                    ? room.lastMessage.substring(0, 20) + "..." 
+                                                room.lastMessage.length > 20
+                                                    ? room.lastMessage.substring(0, 20) + "..."
                                                     : room.lastMessage
                                             ) : "대화를 시작해보세요."}
                                         </React.Fragment>
                                     }
                                 />
-                                {/* 시간 표시 */}
+                                {/* 시간 표시 영역 수정 */}
                                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', minWidth: '60px' }}>
                                     <Typography variant="caption" color="text.secondary">
-                                        {room.lastMessageTime ? dayjs(room.lastMessageTime).format('MM.DD HH:mm') : ''}
+                                        {/* lastMessageTime이 없으면 lastMessageAt이나 createdAt을 확인하도록 수정 */}
+                                        {(room.lastMessageTime || room.lastMessageAt || room.createdAt)
+                                            ? dayjs(room.lastMessageTime || room.lastMessageAt || room.createdAt).format('MM.DD HH:mm')
+                                            : ''}
                                     </Typography>
                                 </Box>
                             </ListItem>

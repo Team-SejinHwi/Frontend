@@ -21,7 +21,7 @@ import PlaceIcon from '@mui/icons-material/Place';
 
 // 가짜 데이터(Mock)와 설정 파일(Config)
 import { mockItems } from '../mocks/mockData';
-import { IS_MOCK_MODE, API_BASE_URL } from '../config';
+import { API_BASE_URL, IS_MOCK_MODE, TUNNEL_HEADERS } from '../config';
 import RentalModal from '../components/RentalModal';
 
 export default function ItemDetail() {
@@ -69,14 +69,25 @@ export default function ItemDetail() {
             setLoading(false);
             navigate('/');
           }
-          return; // 여기서 함수 종료해야 아래 Real 모드 코드가 실행 안 됨
+          return;
         }
 
         // [B] Real 모드 (실제 서버 통신)
+        const token = localStorage.getItem('accessToken');
+
+        const reqHeaders = {
+          ...TUNNEL_HEADERS, // 👈 config.js에서 가져온 localtunnel 헤더를 합쳐줍니다
+          "Content-Type": "application/json",
+        };
+
+        if (token) {
+          reqHeaders["Authorization"] = `Bearer ${token}`;
+        }
+
         // 병렬 호출(Promise.all): 상품 정보와 리뷰 정보를 동시에 가져와 속도 향상
         const [itemRes, reviewRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/items/${id}`, { headers: { "ngrok-skip-browser-warning": "69420" } }),
-          fetch(`${API_BASE_URL}/api/reviews/item/${id}`, { headers: { "ngrok-skip-browser-warning": "69420" } })
+          fetch(`${API_BASE_URL}/api/items/${id}`, { headers: reqHeaders }),
+          fetch(`${API_BASE_URL}/api/reviews/item/${id}`, { headers: reqHeaders })
         ]);
 
         // 상품 조회 실패 시 에러 처리
@@ -84,7 +95,7 @@ export default function ItemDetail() {
         const itemData = await itemRes.json();
         setItem(itemData.data || itemData);
 
-        // 리뷰 데이터 처리 (리뷰가 없거나 실패해도 상품은 보여줘야 하므로 에러 무시 가능)
+        // 리뷰 데이터 처리
         if (reviewRes.ok) {
           const reviewData = await reviewRes.json();
           setReviews(reviewData.data || []);
@@ -93,9 +104,9 @@ export default function ItemDetail() {
       } catch (error) {
         console.error("Error:", error);
         alert("상품 정보를 불러오는데 실패했습니다.");
-        navigate('/'); // 에러 시 메인으로 이동
+        navigate('/');
       } finally {
-        if (!IS_MOCK_MODE) setLoading(false); // 로딩 끝
+        if (!IS_MOCK_MODE) setLoading(false);
       }
     };
 
@@ -108,7 +119,7 @@ export default function ItemDetail() {
   // =================================================================
   // 4. 핸들러 (Handlers)
   // =================================================================
-  
+
   // 상품 삭제
   const handleDelete = async () => {
     if (!window.confirm("정말로 이 게시물을 삭제하시겠습니까?")) return;
@@ -125,7 +136,7 @@ export default function ItemDetail() {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'ngrok-skip-browser-warning': '69420',
+          ...TUNNEL_HEADERS,
         },
       });
 
@@ -175,7 +186,7 @@ export default function ItemDetail() {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
-          'ngrok-skip-browser-warning': '69420'
+          ...TUNNEL_HEADERS
         },
         body: JSON.stringify({ itemId: item.itemId }),
       });
@@ -233,8 +244,9 @@ export default function ItemDetail() {
       );
     }
 
-    // 구매자일 경우
+    // 구매자일 경우 (v.02.05 명세 반영)
     const isAvailable = item.itemStatus === 'AVAILABLE';
+    const alreadyRequested = item.isRequested; // [NEW] 이미 신청한 내역이 있는지 확인
 
     return (
       <Stack direction="row" spacing={2} sx={{ width: '100%', mt: 2 }}>
@@ -248,7 +260,8 @@ export default function ItemDetail() {
           문의하기
         </Button>
 
-        {isAvailable ? (
+        {/* [수정됨] 대여 가능하면서, 아직 신청하지 않은 경우에만 버튼 활성화 */}
+        {isAvailable && !alreadyRequested ? (
           <Button
             variant="contained"
             color="primary"
@@ -266,7 +279,8 @@ export default function ItemDetail() {
             startIcon={<BlockIcon />}
             sx={{ flex: 2, py: 1.5, fontWeight: 'bold', bgcolor: '#ccc', color: '#666' }}
           >
-            {item.itemStatus === 'RENTED' ? '대여중 (신청불가)' : '거래 완료'}
+            {/* 상태 메시지 분기 처리 */}
+            {alreadyRequested ? '이미 신청함' : (item.itemStatus === 'RENTED' ? '대여중 (신청불가)' : '거래 완료')}
           </Button>
         )}
       </Stack>
@@ -318,7 +332,7 @@ export default function ItemDetail() {
 
           {/* 상품 상세 텍스트 영역 */}
           <Grid item xs={12} md={6} sx={{ p: 4, display: 'flex', flexDirection: 'column' }}>
-            
+
             {/* 카테고리 및 날짜 */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               {item.category && (
@@ -419,7 +433,7 @@ export default function ItemDetail() {
         <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center' }}>
           ⭐ 이용 후기 ({reviews.length})
           {reviews.length > 0 && (
-            <Typography variant="h6" color="primary" sx={{ ml: 1, fontWeight: 'bold' }}>
+            <Typography component="span" variant="h6" color="primary" sx={{ ml: 1, fontWeight: 'bold' }}>
               {averageRating} / 5.0
             </Typography>
           )}
@@ -449,6 +463,7 @@ export default function ItemDetail() {
                           </Typography>
                         </Box>
                       }
+                      secondaryTypographyProps={{ component: 'div' }}
                       secondary={
                         <Box mt={0.5}>
                           <Rating value={review.rating} readOnly size="small" />
