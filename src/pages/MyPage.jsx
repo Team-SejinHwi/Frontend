@@ -15,13 +15,13 @@ import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import SentimentDissatisfiedIcon from '@mui/icons-material/SentimentDissatisfied';
 import InboxIcon from '@mui/icons-material/Inbox';
 import OutboxIcon from '@mui/icons-material/Outbox';
+import ChatIcon from '@mui/icons-material/Chat';
 
-import { IS_MOCK_MODE, API_BASE_URL } from '../config';
+import { API_BASE_URL, IS_MOCK_MODE, TUNNEL_HEADERS } from '../config';
 import { mockItems, mockUser } from '../mocks/mockData';
 import ItemCard from '../components/ItemCard';
 import ReceivedRequests from '../components/ReceivedRequests';
 import SentRequests from '../components/SentRequests';
-import ChatIcon from '@mui/icons-material/Chat';
 import ChatList from '../components/ChatList';
 
 export default function MyPage() {
@@ -30,331 +30,424 @@ export default function MyPage() {
     // =================================================================
     // 1. 상태 관리 (State Management)
     // =================================================================
-    const [loading, setLoading] = useState(true);
-    const [tabValue, setTabValue] = useState(0); // 0: 내물건, 1: 받은요청, 2: 보낸요청
-
-    // 데이터 상태
+    const [user, setUser] = useState(null);
     const [myItems, setMyItems] = useState([]);
-    const [userInfo, setUserInfo] = useState({ name: '', phone: '', address: '' });
+    const [loading, setLoading] = useState(true);
+    const [tabValue, setTabValue] = useState(0); // 탭 상태 (0: 대여현황, 1: 받은요청, 2: 채팅목록, 3: 내등록물품)
 
-    // 모달(Dialog) 제어 상태
-    const [openPwModal, setOpenPwModal] = useState(false);
+    // 모달 상태 (회원정보 수정, 비밀번호 변경)
     const [openProfileModal, setOpenProfileModal] = useState(false);
-    const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    const [openPwModal, setOpenPwModal] = useState(false);
 
-    // 로컬 스토리지 정보 (로그인 시 저장된 이메일)
-    const myEmail = localStorage.getItem('userEmail') || '정보 없음';
+    // 수정용 폼 상태
+    const [editForm, setEditForm] = useState({
+        name: '',
+        phone: '',
+        address: ''
+    });
+
+    const [passwords, setPasswords] = useState({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+    });
 
     // =================================================================
-    // 2. 데이터 로드 (Data Fetching) - 병렬 처리로 최적화
+    // 2. 데이터 조회 (Data Fetching)
     // =================================================================
     useEffect(() => {
-        const fetchMyPageData = async () => {
+        const fetchMyData = async () => {
             try {
-                // [A] Mock 모드일 경우: 가짜 데이터 즉시 세팅
+                // [A] Mock 모드 처리
                 if (IS_MOCK_MODE) {
-                    console.log("🛠️ MyPage: Mock 모드 실행");
-                    setMyItems(mockItems.filter(item => item.owner.email === myEmail));
-                    setUserInfo({ ...mockUser });
+                    setUser(mockUser);
+                    // 내 이메일과 일치하는 아이템만 필터링
+                    setMyItems(mockItems.filter(i => i.owner.email === mockUser.email));
+                    setEditForm({
+                        name: mockUser.name || '',
+                        phone: mockUser.phone || '',
+                        address: mockUser.address || ''
+                    });
                     setLoading(false);
                     return;
                 }
 
-                // [B] Real 모드: Promise.all을 사용하여 두 API를 동시에 호출 (속도 향상)
+                // [B] Real 모드 처리
                 const token = localStorage.getItem('accessToken');
-                const commonHeaders = {
-                    "ngrok-skip-browser-warning": "69420", // Ngrok 경고 무시용 헤더
-                    ...(token && { 'Authorization': `Bearer ${token}` })
-                };
+                if (!token) {
+                    navigate('/login');
+                    return;
+                }
 
-                const [itemsRes, userRes] = await Promise.all([
-                    fetch(`${API_BASE_URL}/api/items`, {
-                        headers: commonHeaders,
-                        // credentials: 'include'  👈 내 쿠키 가져가! (내 물건 조회용)  
-                    }),
+                // 내 정보와 내 등록 물품을 병렬로 가져옴
+                const [userRes, itemsRes] = await Promise.all([
                     fetch(`${API_BASE_URL}/api/members/me`, {
-                        headers: commonHeaders,
-                        // credentials: 'include'  👈 내 쿠키 가져가! (내 프로필 조회용)  
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            ...TUNNEL_HEADERS
+                        }
+                    }),
+                    fetch(`${API_BASE_URL}/api/items/my`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            ...TUNNEL_HEADERS
+                        }
                     })
                 ]);
 
-                // 1. 내 물건 필터링
-                if (itemsRes.ok) {
-                    const result = await itemsRes.json();
-                    const allItems = result.data || result;
-                    // 내가 등록한 물건만 골라내기
-                    setMyItems(allItems.filter(item => item.owner?.email === myEmail));
-                }
-
-                // 2. 내 프로필 정보
-                if (userRes.ok) {
+                if (userRes.ok && itemsRes.ok) {
                     const userData = await userRes.json();
+                    const itemsData = await itemsRes.json();
 
-                    // 👇  포장지(data)가 있는지 확인하고 가져오기
-                    const user = userData.data || userData;
-                    setUserInfo({
-                        name: user.name || '',
-                        phone: user.phone || '',
-                        address: user.address || ''
+                    const finalUser = userData.data || userData;
+                    setUser(finalUser);
+                    setMyItems(itemsData.data || itemsData);
+
+                    // 수정 폼 초기값 세팅
+                    setEditForm({
+                        name: finalUser.name || '',
+                        phone: finalUser.phone || '',
+                        address: finalUser.address || ''
                     });
                 }
-
             } catch (error) {
-                console.error("❌ MyPage 데이터 로딩 실패:", error);
+                console.error("마이페이지 데이터 로드 실패:", error);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchMyPageData();
-    }, [myEmail]);
+        fetchMyData();
+    }, [navigate]);
 
     // =================================================================
     // 3. 핸들러 (Event Handlers)
     // =================================================================
-    const handleTabChange = (_, newValue) => setTabValue(newValue);
-
-    // 입력값 변경 (Computed Property Name 사용)
-    const handleProfileChange = (e) => setUserInfo(prev => ({ ...prev, [e.target.name]: e.target.value }));
-    const handlePassChange = (e) => setPasswords(prev => ({ ...prev, [e.target.name]: e.target.value }));
-
-    // 프로필 수정 요청
-    const handleSubmitProfile = async () => {
-        // [A] Mock 모드
-        if (IS_MOCK_MODE) {
-            alert("🎉 [Mock] 수정 완료");
-            setOpenProfileModal(false);
-            return;
-        }
-
-        // [B] Real 모드
-        try {
-
-            // 0. 토큰 값 불러오기
-            const token = localStorage.getItem('accessToken');
-
-            // 1. 보낼 데이터 준비 (이름, 전화번호, 주소)
-            const updateData = {
-                name: userInfo.name,
-                phone: userInfo.phone,
-                address: userInfo.address
-            };
-            const response = await fetch(`${API_BASE_URL}/api/members/me`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'ngrok-skip-browser-warning': '69420',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(updateData)
-            });
-
-            if (response.ok) {
-                alert("프로필 정보가 성공적으로 수정되었습니다.");
-                setOpenProfileModal(false);
-            } else {
-                const errorData = await response.json();
-                alert(errorData.message || "프로필 수정 실패");
-            }
-        } catch (error) {
-            console.error("프로필 수정 오류:", error);
-            alert("서버와 통신 중 오류가 발생했습니다.");
-        }
+    
+    // 탭 변경
+    const handleTabChange = (event, newValue) => {
+        setTabValue(newValue);
     };
 
-    // 비밀번호 변경 요청
+    // 프로필 수정 입력 핸들러
+    const handleEditChange = (e) => {
+        setEditForm({ ...editForm, [e.target.name]: e.target.value });
+    };
+
+    // 비밀번호 입력 핸들러
+    const handlePassChange = (e) => {
+        setPasswords({ ...passwords, [e.target.name]: e.target.value });
+    };
+
+    // 회원 정보 수정 제출
+    const handleSubmitProfile = async () => {
+        if (IS_MOCK_MODE) {
+            setUser({ ...user, ...editForm });
+            setOpenProfileModal(false);
+            alert("정보가 수정되었습니다. (Mock)");
+            return;
+        }
+        
+        // TODO: Real API 연동 (PATCH /api/members/me)
+        alert("정보 수정 기능 준비 중입니다.");
+        setOpenProfileModal(false);
+    };
+
+    // 비밀번호 변경 제출
     const handleSubmitPassword = async () => {
-        const { currentPassword, newPassword, confirmPassword } = passwords;
-
-        // 1. 간단한 유효성 검사
-        if (!currentPassword || !newPassword) {
-            alert("비밀번호를 모두 입력해주세요.");
-            return;
-        }
-
-        // 새 비밀번호 길이 검사 (8자 이상만 확인)
-        if (newPassword.length < 8) {
-            alert("새 비밀번호는 최소 8자 이상이어야 합니다.");
-            return;
-        }
-
-        if (newPassword !== confirmPassword) {
-            alert("새 비밀번호가 일치하지 않습니다.");
+        if (passwords.newPassword !== passwords.confirmPassword) {
+            alert("새 비밀번호 확인이 일치하지 않습니다.");
             return;
         }
 
         if (IS_MOCK_MODE) {
-            alert("🎉 [Mock] 비밀번호 변경 완료. 다시 로그인하세요.");
-            localStorage.clear(); // 세션 클리어
-            navigate('/login');
+            alert("비밀번호가 변경되었습니다. (Mock)");
+            setOpenPwModal(false);
+            setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
             return;
         }
 
-        try {
-            const token = localStorage.getItem('accessToken');
-            const response = await fetch(`${API_BASE_URL}/api/members/password`, {
-                method: 'PATCH',  //리소스의 일부만 수정하므로 PATCH 메소드 사용.
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    currentPassword,
-                    newPassword
-                })
-            });
-
-            if (response.ok) {
-                alert("비밀번호가 안전하게 변경되었습니다. 다시 로그인해주세요.");
-
-                // ==========================================
-                // [보안 강화] Session Cleanup (강제 로그아웃)
-                // ==========================================
-                localStorage.removeItem('accessToken');
-                localStorage.removeItem('refreshToken');
-                localStorage.removeItem('userEmail');
-                // 필요 시 세션 스토리지나 쿠키도 정리
-
-                setOpenPwModal(false);
-                navigate('/login'); // 로그인 페이지로 리다이렉트
-            } else {
-                const errorData = await response.json();
-                alert(errorData.message || "비밀번호 변경에 실패했습니다. 현재 비밀번호를 확인하세요.");
-            }
-        } catch (error) {
-            console.error("비밀번호 변경 오류:", error);
-            alert("서버 통신 중 오류가 발생했습니다.");
-        }
+        // TODO: Real API 연동
+        alert("비밀번호 변경 기능 준비 중입니다.");
+        setOpenPwModal(false);
     };
 
     if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}><CircularProgress /></Box>;
 
+    // =================================================================
+    // 4. 탭 콘텐츠 렌더링 함수
+    // =================================================================
+    const renderTabContent = () => {
+        switch (tabValue) {
+            case 0:
+                return <SentRequests />; // 내가 신청한 대여 현황 (SentRequests.jsx)
+            case 1:
+                return <ReceivedRequests />; // 내 물건에 들어온 요청 관리 (ReceivedRequests.jsx)
+            case 2:
+                return <ChatList />; // 1:1 채팅 목록 (ChatList.jsx)
+            case 3:
+                return (
+                    <Grid container spacing={2}>
+                        {myItems.length === 0 ? (
+                            <Grid item xs={12} sx={{ textAlign: 'center', py: 10 }}>
+                                <SentimentDissatisfiedIcon sx={{ fontSize: 60, color: '#ccc', mb: 2 }} />
+                                <Typography color="text.secondary">등록한 물품이 없습니다.</Typography>
+                                <Button 
+                                    variant="contained" 
+                                    sx={{ mt: 2 }}
+                                    onClick={() => navigate('/products/new')}
+                                >
+                                    첫 물품 등록하기
+                                </Button>
+                            </Grid>
+                        ) : (
+                            myItems.map((item) => (
+                                <Grid item key={item.itemId} xs={12} sm={6} md={4}>
+                                    <Box sx={{ position: 'relative' }}>
+                                        <ItemCard item={item} />
+                                        
+                                        {/* 🏷️ [UPDATE] v.02.05 명세 반영: 내 등록 물품의 상태 표시 레이블 */}
+                                        <Box sx={{ position: 'absolute', top: 10, right: 10, zIndex: 2 }}>
+                                            {item.itemStatus === 'AVAILABLE' ? (
+                                                <Chip label="대여 가능" color="success" size="small" sx={{ fontWeight: 'bold', boxShadow: 1 }} />
+                                            ) : item.itemStatus === 'RENTED' ? (
+                                                <Chip label="대여 중" color="primary" size="small" sx={{ fontWeight: 'bold', boxShadow: 1 }} /> // [NEW] 대여 중 상태
+                                            ) : (
+                                                <Chip label="거래 완료" color="default" size="small" sx={{ fontWeight: 'bold', boxShadow: 1, bgcolor: '#999', color: 'white' }} />
+                                            )}
+                                        </Box>
+                                    </Box>
+                                </Grid>
+                            ))
+                        )}
+                    </Grid>
+                );
+            default:
+                return null;
+        }
+    };
+
     return (
         <Container maxWidth="lg" sx={{ py: 5 }}>
-            {/* --- 섹션 1: 사용자 프로필 카드 (MUI Grid v2 문법 적용 완료) --- */}
-            <Paper elevation={6} sx={{ p: 4, mb: 4, borderRadius: 4, background: 'linear-gradient(135deg, #1976d2 30%, #42a5f5 90%)', color: 'white' }}>
-                <Grid container alignItems="center" spacing={3}>
-
-                    {/* [FIX] 'item' prop 제거 (v2에서는 불필요) */}
-                    <Grid>
-                        <Avatar sx={{ width: 100, height: 100, bgcolor: 'white', color: '#1976d2' }}>
-                            <PersonIcon sx={{ fontSize: 60 }} />
+            <Grid container spacing={4}>
+                
+                {/* ---------------------------------------------------------
+                    좌측 영역: 사용자 프로필 정보 카드
+                ---------------------------------------------------------- */}
+                <Grid item xs={12} md={4}>
+                    <Paper elevation={3} sx={{ p: 4, borderRadius: 4, textAlign: 'center', position: 'relative', border: '1px solid #eee' }}>
+                        
+                        {/* 사용자 아바타 및 기본 정보 */}
+                        <Avatar 
+                            sx={{ 
+                                width: 100, height: 100, mx: 'auto', mb: 2, 
+                                bgcolor: 'primary.main', fontSize: '2.5rem',
+                                boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
+                            }}
+                        >
+                            {user?.name ? user.name[0] : <PersonIcon fontSize="large" />}
                         </Avatar>
-                    </Grid>
+                        
+                        <Typography variant="h5" fontWeight="900" sx={{ mb: 0.5 }}>
+                            {user?.name || '사용자'}님
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                            {user?.email}
+                        </Typography>
 
-                    {/* [FIX] 'xs' 대신 'size="grow"' 사용 (남은 공간 모두 차지) */}
-                    <Grid size="grow">
-                        <Stack direction="row" alignItems="center" spacing={1}>
-                            <Typography variant="h4" fontWeight="bold">
-                                {userInfo.name || myEmail.split('@')[0]}
-                            </Typography>
-                            <Chip icon={<VerifiedUserIcon sx={{ fill: 'white !important' }} />} label="인증 회원" size="small" sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white' }} />
+                        <Stack direction="row" spacing={1} justifyContent="center" sx={{ mb: 3 }}>
+                            <Chip 
+                                icon={<VerifiedUserIcon style={{ fontSize: 16 }} />} 
+                                label="본인인증 완료" 
+                                color="info" 
+                                variant="outlined" 
+                                size="small" 
+                            />
                         </Stack>
-                        <Typography variant="body1" sx={{ opacity: 0.9 }}>{myEmail}</Typography>
-                        <Stack direction="row" spacing={3} sx={{ mt: 2, opacity: 0.8 }}>
-                            <Typography variant="caption">📞 {userInfo.phone || "전화번호 미등록"}</Typography>
-                            <Typography variant="caption">🏠 {userInfo.address || "주소 미등록"}</Typography>
-                        </Stack>
-                    </Grid>
 
-                    {/* [FIX] 'item' prop 제거 */}
-                    <Grid>
-                        <Stack spacing={1}>
-                            <Button variant="contained" startIcon={<EditIcon />} onClick={() => setOpenProfileModal(true)} sx={{ bgcolor: 'rgba(255,255,255,0.2)' }}>내 정보 수정</Button>
-                            <Button variant="contained" startIcon={<LockResetIcon />} onClick={() => setOpenPwModal(true)} sx={{ bgcolor: 'rgba(0,0,0,0.2)' }}>비밀번호 변경</Button>
-                        </Stack>
-                    </Grid>
-                </Grid>
-            </Paper>
+                        <Divider sx={{ my: 2 }} />
 
-            {/* --- 섹션 2: 탭 메뉴 --- */}
-            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-                <Tabs value={tabValue} onChange={handleTabChange} textColor="primary" indicatorColor="primary">
-                    <Tab icon={<InventoryIcon />} iconPosition="start" label="내 물건 관리" />
-                    <Tab icon={<InboxIcon />} iconPosition="start" label="📥 받은 요청 (Owner)" />
-                    <Tab icon={<OutboxIcon />} iconPosition="start" label="📤 내 대여 내역 (Renter)" />
-                    <Tab icon={<ChatIcon />} label="💬 채팅 목록" />
-
-                </Tabs>
-                {/* 탭 패널 추가 */}
-                {tabValue === 3 && (
-                    <Fade in={true}>
-                        <Box sx={{ mt: 3 }}>
-                            <ChatList /> {/* 👈 위에서 만든 컴포넌트 삽입 */}
+                        {/* 상세 정보 (연락처, 주소 등) */}
+                        <Box sx={{ p: 2, bgcolor: '#f8f9fa', borderRadius: 3, textAlign: 'left', mb: 3 }}>
+                            <Stack spacing={1.5}>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary" fontWeight="bold">연락처</Typography>
+                                    <Typography variant="body2" fontWeight="500">{user?.phone || '번호를 등록해주세요'}</Typography>
+                                </Box>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary" fontWeight="bold">주 활동 지역</Typography>
+                                    <Typography variant="body2" fontWeight="500">{user?.address || '주소를 등록해주세요'}</Typography>
+                                </Box>
+                            </Stack>
                         </Box>
-                    </Fade>
-                )}
 
-            </Box>
+                        {/* 프로필 관리 버튼군 */}
+                        <Stack spacing={1.5}>
+                            <Button 
+                                variant="contained" 
+                                color="primary" 
+                                startIcon={<EditIcon />} 
+                                onClick={() => setOpenProfileModal(true)}
+                                fullWidth
+                                sx={{ borderRadius: 2, fontWeight: 'bold' }}
+                            >
+                                프로필 수정
+                            </Button>
+                            <Button 
+                                variant="outlined" 
+                                color="inherit" 
+                                startIcon={<LockResetIcon />} 
+                                onClick={() => setOpenPwModal(true)}
+                                fullWidth
+                                sx={{ borderRadius: 2, fontWeight: 'bold' }}
+                            >
+                                비밀번호 변경
+                            </Button>
+                        </Stack>
+                    </Paper>
+                </Grid>
 
-            {/* 탭 패널 1: 내 물건 관리 */}
-            {tabValue === 0 && (
-                <Fade in={true}>
-                    <Box>
-                        {myItems.length === 0 ? (
-                            <Paper sx={{ py: 8, textAlign: 'center', bgcolor: '#f8f9fa' }}>
-                                <SentimentDissatisfiedIcon sx={{ fontSize: 60, color: '#ccc', mb: 2 }} />
-                                <Typography variant="h6" color="text.secondary">등록한 물건이 없습니다.</Typography>
-                                <Button sx={{ mt: 2 }} variant="contained" onClick={() => navigate('/products/new')}>+ 첫 상품 등록</Button>
-                            </Paper>
-                        ) : (
-                            <Grid container spacing={3}>
-                                {myItems.map((item) => (
-                                    // [FIX] 'xs={12} sm={6}...' 대신 'size={{ xs: 12, sm: 6... }}' 사용
-                                    // 이렇게 해야 최신 MUI에서 반응형 그리드가 정상 작동하며 경고가 사라짐
-                                    <Grid key={item.itemId || item.id} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-                                        <ItemCard item={item} />
-                                    </Grid>
-                                ))}
-                            </Grid>
-                        )}
-                    </Box>
-                </Fade>
-            )}
+                {/* ---------------------------------------------------------
+                    우측 영역: 거래 내역 및 탭 시스템
+                ---------------------------------------------------------- */}
+                <Grid item xs={12} md={8}>
+                    <Paper elevation={0} sx={{ borderRadius: 4, bgcolor: 'transparent' }}>
+                        
+                        {/* 탭 헤더 영역 */}
+                        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+                            <Tabs 
+                                value={tabValue} 
+                                onChange={handleTabChange} 
+                                variant="scrollable"
+                                scrollButtons="auto"
+                                sx={{
+                                    '& .MuiTab-root': { fontWeight: 'bold', fontSize: '1rem', minHeight: 60 },
+                                    '& .Mui-selected': { color: 'primary.main' }
+                                }}
+                            >
+                                <Tab icon={<OutboxIcon />} label="대여 신청 현황" iconPosition="start" />
+                                <Tab icon={<InboxIcon />} label="받은 요청함" iconPosition="start" />
+                                <Tab icon={<ChatIcon />} label="채팅 목록" iconPosition="start" />
+                                <Tab icon={<InventoryIcon />} label="내 등록 물품" iconPosition="start" />
+                            </Tabs>
+                        </Box>
 
-            {/* 탭 패널 2: 받은 요청 */}
-            {tabValue === 1 && <Fade in={true}><Box><ReceivedRequests /></Box></Fade>}
+                        {/* 탭 콘텐츠 영역 (애니메이션 적용) */}
+                        <Box sx={{ minHeight: '500px' }}>
+                            <Fade in={true} timeout={600}>
+                                <Box>
+                                    {renderTabContent()}
+                                </Box>
+                            </Fade>
+                        </Box>
+                    </Paper>
+                </Grid>
+            </Grid>
 
-            {/* 탭 패널 3: 보낸 요청 */}
-            {tabValue === 2 && <Fade in={true}><Box><SentRequests /></Box></Fade>}
+            {/* =================================================================
+                5. 모달 (Dialogs)
+            ================================================================== */}
 
-            {/* --- 모달 (Dialogs) --- */}
-            {/* 프로필 수정 모달 */}
-            <Dialog open={openProfileModal} onClose={() => setOpenProfileModal(false)}>
-                <DialogTitle>내 정보 수정</DialogTitle>
+            {/* [모달 1] 프로필 수정 */}
+            <Dialog 
+                open={openProfileModal} 
+                onClose={() => setOpenProfileModal(false)}
+                fullWidth 
+                maxWidth="xs"
+                PaperProps={{ sx: { borderRadius: 3 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 'bold', pt: 3 }}>👤 내 정보 수정</DialogTitle>
                 <DialogContent>
-                    <TextField margin="dense" label="이름" name="name" fullWidth value={userInfo.name} onChange={handleProfileChange} />
-                    <TextField margin="dense" label="전화번호" name="phone" fullWidth value={userInfo.phone} onChange={handleProfileChange} />
-                    <TextField margin="dense" label="주소" name="address" fullWidth value={userInfo.address} onChange={handleProfileChange} />
+                    <Stack spacing={2} sx={{ mt: 1 }}>
+                        <TextField 
+                            label="이름" 
+                            name="name"
+                            fullWidth 
+                            variant="outlined" 
+                            value={editForm.name}
+                            onChange={handleEditChange}
+                        />
+                        <TextField 
+                            label="연락처" 
+                            name="phone"
+                            fullWidth 
+                            variant="outlined" 
+                            value={editForm.phone}
+                            onChange={handleEditChange}
+                            placeholder="010-0000-0000"
+                        />
+                        <TextField 
+                            label="활동 지역" 
+                            name="address"
+                            fullWidth 
+                            variant="outlined" 
+                            value={editForm.address}
+                            onChange={handleEditChange}
+                            placeholder="예: 서울시 강남구"
+                        />
+                    </Stack>
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setOpenProfileModal(false)}>취소</Button>
-                    <Button onClick={handleSubmitProfile} variant="contained">저장</Button>
+                <DialogActions sx={{ p: 3 }}>
+                    <Button onClick={() => setOpenProfileModal(false)} color="inherit" sx={{ fontWeight: 'bold' }}>취소</Button>
+                    <Button onClick={handleSubmitProfile} variant="contained" sx={{ fontWeight: 'bold', px: 3 }}>저장하기</Button>
                 </DialogActions>
             </Dialog>
 
-            {/* 비밀번호 변경 모달 */}
-            <Dialog open={openPwModal} onClose={() => setOpenPwModal(false)}>
-                <DialogTitle>비밀번호 변경</DialogTitle>
+            {/* [모달 2] 비밀번호 변경 */}
+            <Dialog 
+                open={openPwModal} 
+                onClose={() => setOpenPwModal(false)}
+                fullWidth 
+                maxWidth="xs"
+                PaperProps={{ sx: { borderRadius: 3 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 'bold', pt: 3 }}>🔒 비밀번호 변경</DialogTitle>
                 <DialogContent>
-                    {/* 현재 비밀번호 필드  */}
-                    <TextField
-                        margin="dense"
-                        type="password"
-                        label="현재 비밀번호"
-                        name="currentPassword"
-                        fullWidth
-                        value={passwords.currentPassword}
-                        onChange={handlePassChange}
-                    />
-                    <TextField margin="dense" type="password" label="새 비밀번호" name="newPassword" fullWidth value={passwords.newPassword} onChange={handlePassChange} />
-                    <TextField margin="dense" type="password" label="새 비밀번호 확인" name="confirmPassword" fullWidth value={passwords.confirmPassword} onChange={handlePassChange} />
+                    <Stack spacing={2} sx={{ mt: 1 }}>
+                        <TextField 
+                            type="password" 
+                            label="현재 비밀번호" 
+                            name="currentPassword"
+                            fullWidth 
+                            value={passwords.currentPassword}
+                            onChange={handlePassChange}
+                        />
+                        <Divider sx={{ my: 1 }}>새 비밀번호 입력</Divider>
+                        <TextField 
+                            type="password" 
+                            label="새 비밀번호" 
+                            name="newPassword"
+                            fullWidth 
+                            value={passwords.newPassword}
+                            onChange={handlePassChange}
+                        />
+                        <TextField 
+                            type="password" 
+                            label="새 비밀번호 확인" 
+                            name="confirmPassword"
+                            fullWidth 
+                            value={passwords.confirmPassword}
+                            onChange={handlePassChange}
+                        />
+                    </Stack>
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setOpenPwModal(false)}>취소</Button>
-                    <Button onClick={handleSubmitPassword} variant="contained">변경</Button>
+                <DialogActions sx={{ p: 3 }}>
+                    <Button onClick={() => setOpenPwModal(false)} color="inherit" sx={{ fontWeight: 'bold' }}>취소</Button>
+                    <Button onClick={handleSubmitPassword} variant="contained" color="primary" sx={{ fontWeight: 'bold', px: 3 }}>변경 확정</Button>
                 </DialogActions>
             </Dialog>
+
         </Container>
+    );
+}
+
+// 구분선 컴포넌트 (내부에서 사용)
+function Divider({ children, sx }) {
+    return (
+        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', my: 2, ...sx }}>
+            <Box sx={{ flex: 1, height: '1px', bgcolor: '#eee' }} />
+            {children && <Typography variant="caption" sx={{ px: 1, color: '#999' }}>{children}</Typography>}
+            <Box sx={{ flex: 1, height: '1px', bgcolor: '#eee' }} />
+        </Box>
     );
 }
