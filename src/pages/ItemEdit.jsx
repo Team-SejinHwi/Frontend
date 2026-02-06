@@ -74,7 +74,7 @@ export default function ItemEdit() {
         const response = await fetch(`${API_BASE_URL}/api/items/${id}`, {
           headers: { ...TUNNEL_HEADERS }
         });
-        
+
         if (response.ok) {
           const result = await response.json();
           const item = result.data || result;
@@ -175,26 +175,40 @@ export default function ItemEdit() {
 
     try {
       const formData = new FormData();
-      formData.append('title', values.title);
-      formData.append('category', values.category);
-      formData.append('price', parseInt(values.price));
-      formData.append('content', values.content);
 
-      // ★ [UPDATE v.02.05] 명세서 필드명 매칭: tradeAddress
-      formData.append('tradeAddress', values.location);
-      formData.append('tradeLatitude', coords.lat);
-      formData.append('tradeLongitude', coords.lng);
+      // 1. 서버가 요구하는 JSON 구조 생성 (명세서 v.02.05 필드명 기준)
+      const itemDataObj = {
+        title: values.title,
+        category: values.category,
+        content: values.content,
+        price: parseInt(values.price),
+        location: values.location,
+        latitude: coords.lat,
+        longitude: coords.lng,
+        address: values.location,// 명세서의 address 필드 대응
+        tradeAddress: values.location  // 👈 실제 백엔드 DTO와 일치할 확률이 높은 필드
+      };
 
-      // ★ [UPDATE v.02.05] 이미지를 새로 변경했을 때만 FormData에 추가 (Optional)
+      // 2. 중요: JSON 객체를 Blob으로 변환하여 'itemData'라는 키로 추가
+      formData.append(
+        'itemData',
+        new Blob([JSON.stringify(itemDataObj)], { type: 'application/json' })
+      );
+
+      // 3. 이미지를 새로 선택한 경우에만 'itemImage' 키로 추가
       if (imageFile) {
         formData.append('itemImage', imageFile);
       }
 
       const token = localStorage.getItem('accessToken');
+
+      // 4. PUT 메서드로 요청 전송
       const response = await fetch(`${API_BASE_URL}/api/items/${id}`, {
-        method: 'PATCH', // v.02.05 명세 준수: 수정은 PATCH 메서드 사용
+        method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          ...TUNNEL_HEADERS
+          // Content-Type은 설정하지 마세요 (브라우저가 자동으로 multipart/form-data 설정)
         },
         body: formData,
       });
@@ -203,8 +217,15 @@ export default function ItemEdit() {
         alert("물품 정보가 성공적으로 수정되었습니다.");
         navigate(`/items/${id}`);
       } else {
-        const errorData = await response.json();
-        alert(errorData.message || "수정 실패");
+        // 상세 에러 확인을 위한 로직
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          alert(errorData.message || "수정 실패");
+        } else {
+          const text = await response.text();
+          alert(`서버 응답 오류(${response.status}): ${text}`);
+        }
       }
     } catch (error) {
       console.error("수정 에러:", error);

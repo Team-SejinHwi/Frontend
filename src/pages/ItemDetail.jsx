@@ -120,6 +120,14 @@ export default function ItemDetail() {
   // 4. 핸들러 (Handlers)
   // =================================================================
 
+  // 🌟 [추가] 대여 신청 성공 시 호출될 함수
+  const handleRentalSuccess = () => {
+    setItem(prev => ({
+      ...prev,
+      isRequested: true // 즉시 '이미 신청함' 상태로 변경
+    }));
+  };
+
   // 상품 삭제
   const handleDelete = async () => {
     if (!window.confirm("정말로 이 게시물을 삭제하시겠습니까?")) return;
@@ -482,10 +490,11 @@ export default function ItemDetail() {
         </Paper>
       </Box>
 
-      {/* 대여 신청 모달 */}
+     {/* 대여 신청 모달 */}
       <RentalModal
         open={isRentalModalOpen}
         onClose={() => setRentalModalOpen(false)}
+        onRentalSuccess={handleRentalSuccess} 
         item={item}
       />
     </Container>
