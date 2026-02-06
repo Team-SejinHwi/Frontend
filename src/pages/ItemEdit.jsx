@@ -155,11 +155,26 @@ export default function ItemEdit() {
     });
   };
 
-  // 지도 클릭 핸들러
+  // 지도 클릭 핸들러 (좌표 클릭 시 주소까지 자동 업데이트)
   const handleMapClick = (_t, mouseEvent) => {
-    setCoords({
-      lat: mouseEvent.latLng.getLat(),
-      lng: mouseEvent.latLng.getLng(),
+    const lat = mouseEvent.latLng.getLat();
+    const lng = mouseEvent.latLng.getLng();
+
+    // 1. 좌표 상태 업데이트 (핀 이동)
+    setCoords({ lat, lng });
+
+    // 2. 역지오코딩: 좌표 -> 주소 변환
+    const geocoder = new window.kakao.maps.services.Geocoder();
+    geocoder.coord2Address(lng, lat, (result, status) => {
+      if (status === window.kakao.maps.services.Status.OK) {
+        // 도로명 주소가 있으면 도로명, 없으면 지번 주소 사용
+        const addr = result[0].road_address
+          ? result[0].road_address.address_name
+          : result[0].address.address_name;
+
+        // 3. 주소 입력창(location) 업데이트
+        setValues(prev => ({ ...prev, location: addr }));
+      }
     });
   };
 

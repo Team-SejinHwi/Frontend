@@ -47,7 +47,7 @@ export default function ItemRegister({ isLoggedIn }) {
     price: "",
     content: "",
     location: "", // 화면 표시용 주소 (전송 시 tradeAddress로 매핑)
-    
+
   });
 
   // [지도 및 좌표 상태]
@@ -115,11 +115,25 @@ export default function ItemRegister({ isLoggedIn }) {
     });
   };
 
-  // 지도 클릭 핸들러 (좌표 미세 조정)
+  // 지도 클릭 핸들러 (좌표 미세 조정 및 주소 자동 매핑)
   const handleMapClick = (_t, mouseEvent) => {
-    setCoords({
-      lat: mouseEvent.latLng.getLat(),
-      lng: mouseEvent.latLng.getLng(),
+    const lat = mouseEvent.latLng.getLat();
+    const lng = mouseEvent.latLng.getLng();
+
+    // 1. 클릭한 위치로 좌표 업데이트
+    setCoords({ lat, lng });
+
+    // 2. 카카오 Geocoder를 이용해 주소 획득
+    const geocoder = new window.kakao.maps.services.Geocoder();
+    geocoder.coord2Address(lng, lat, (result, status) => {
+      if (status === window.kakao.maps.services.Status.OK) {
+        const addr = result[0].road_address
+          ? result[0].road_address.address_name
+          : result[0].address.address_name;
+
+        // 3. 주소 상태값 업데이트
+        setValues(prev => ({ ...prev, location: addr }));
+      }
     });
   };
 

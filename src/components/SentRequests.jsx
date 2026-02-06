@@ -11,8 +11,8 @@ import RateReviewIcon from '@mui/icons-material/RateReview'; // 리뷰 아이콘
 import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn'; // [NEW] 반납 아이콘
 
 import { API_BASE_URL, IS_MOCK_MODE, TUNNEL_HEADERS } from '../config';
-import { mockMyRentals } from '../mocks/mockData';
-import ReviewModal from './ReviewModal'; 
+import { mockMyRentals, mockItems } from '../mocks/mockData';
+import ReviewModal from './ReviewModal';
 
 // =================================================================
 // 0. 상태별 뱃지 디자인 설정 (v.02.05 명세 반영)
@@ -78,7 +78,7 @@ export default function SentRequests() {
     // =================================================================
     // 3. 핸들러 (Event Handlers)
     // =================================================================
-    
+
     // 요청 취소 핸들러 (POST /api/rentals/{id}/cancel)
     const handleCancel = async (rentalId) => {
         if (!window.confirm("정말 이 대여 요청을 취소하시겠습니까?")) return;
@@ -118,6 +118,13 @@ export default function SentRequests() {
         if (IS_MOCK_MODE) {
             alert("[Mock] 반납이 완료되었습니다.");
             setRentals(prev => prev.map(r => r.rentalId === rentalId ? { ...r, status: 'RETURNED' } : r));
+
+            // [추가] 해당 상품의 상태도 AVAILABLE로 변경
+            const targetRental = rentals.find(r => r.rentalId === rentalId);
+            if (targetRental) {
+                const item = mockItems.find(i => i.itemId === targetRental.itemId);
+                if (item) item.itemStatus = 'AVAILABLE';
+            }
             return;
         }
 
@@ -188,7 +195,7 @@ export default function SentRequests() {
                                             <Typography variant="body2" fontWeight="bold" sx={{ mt: 0.5 }}>
                                                 결제 예정 금액: {rental.totalPrice?.toLocaleString()}원
                                             </Typography>
-                                            
+
                                             {/* 거절된 경우 사유 표시 */}
                                             {rental.status === 'REJECTED' && rental.rejectReason && (
                                                 <Alert severity="error" sx={{ mt: 1, py: 0 }}>
