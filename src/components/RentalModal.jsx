@@ -27,7 +27,7 @@ import { API_BASE_URL, IS_MOCK_MODE, TUNNEL_HEADERS } from '../config';
 // 한국어 로케일 설정
 dayjs.locale('ko');
 
-const RentalModal = ({ open, onClose, item }) => {
+const RentalModal = ({ open, onClose, item, onRentalSuccess }) => {
   // 1. 상태 관리
   const [startDateTime, setStartDateTime] = useState(null);
   const [endDateTime, setEndDateTime] = useState(null);
@@ -113,6 +113,7 @@ const RentalModal = ({ open, onClose, item }) => {
         console.log("📦 [Mock] 서버 전송 데이터:", requestBody);
         setTimeout(() => {
             alert(`[Mock] 신청 완료!\n기간: ${startDateTime.format('MM/DD HH:mm')} ~ ${endDateTime.format('MM/DD HH:mm')}`);
+            onRentalSuccess(); // 🌟 부모 상태 업데이트 호출
             onClose();
             setLoading(false);
         }, 1000);
@@ -132,6 +133,7 @@ const RentalModal = ({ open, onClose, item }) => {
 
       if (response.ok) {
         alert("대여 신청이 성공적으로 완료되었습니다.");
+        onRentalSuccess(); // 🌟 2. 성공 시 부모 컴포넌트의 isRequested를 true로 바꿈
         onClose(); 
       } else {
         const errorMsg = await response.text();

@@ -47,6 +47,7 @@ export default function ItemRegister({ isLoggedIn }) {
     price: "",
     content: "",
     location: "", // 화면 표시용 주소 (전송 시 tradeAddress로 매핑)
+    
   });
 
   // [지도 및 좌표 상태]
@@ -154,18 +155,28 @@ export default function ItemRegister({ isLoggedIn }) {
 
     // [B] Real 모드 (API 통신)
     try {
-      // 이미지 전송을 위한 FormData 구성
       const formData = new FormData();
-      formData.append('title', values.title);
-      formData.append('category', values.category); // Enum 규격 전송
-      formData.append('price', parseInt(values.price));
-      formData.append('content', values.content);
 
-      // ★ [UPDATE v.02.05] 명세서 필드명 매칭: location -> tradeAddress
-      formData.append('tradeAddress', values.location);
-      formData.append('tradeLatitude', coords.lat);
-      formData.append('tradeLongitude', coords.lng);
+      // 1. API 명세서 규격에 맞는 itemData 객체 생성
+      const itemDataObj = {
+        title: values.title,
+        category: values.category,
+        content: values.content,
+        price: parseInt(values.price),
+        location: values.location, // 화면 표시용 주소
+        latitude: coords.lat,      // 명세서 필드명: latitude
+        longitude: coords.lng,     // 명세서 필드명: longitude
+        address: values.location,   // 명세서 필드명: address
+        tradeAddress: values.location  // 👈 실제 백엔드 DTO와 일치할 확률이 높은 필드
+      };
 
+      // 2. itemData를 JSON Blob으로 변환하여 추가 (Content-Type 설정 필수)
+      formData.append(
+        'itemData',
+        new Blob([JSON.stringify(itemDataObj)], { type: 'application/json' })
+      );
+
+      // 3. 이미지 파일 추가
       if (imageFile) {
         formData.append('itemImage', imageFile);
       }
@@ -175,17 +186,26 @@ export default function ItemRegister({ isLoggedIn }) {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          // multipart/form-data는 브라우저가 자동 설정하므로 Content-Type 명시 안 함
+          ...TUNNEL_HEADERS
+          // multipart/form-data는 브라우저가 자동으로 설정하므로 직접 적지 않습니다.
         },
         body: formData,
       });
 
+      // 403 에러 발생 시 JSON이 아닐 수 있으므로 체크 강화
       if (response.ok) {
         alert("물품이 성공적으로 등록되었습니다!");
         navigate('/');
       } else {
-        const errorData = await response.json();
-        alert(errorData.message || "등록 중 오류가 발생했습니다.");
+        // 에러 응답이 JSON인지 확인 후 처리 (Unexpected end of JSON input 방지)
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          alert(errorData.message || "등록 중 오류가 발생했습니다.");
+        } else {
+          const errorText = await response.text();
+          alert(`에러 발생(${response.status}): ${errorText || "권한이 없거나 서버 내부 오류입니다."}`);
+        }
       }
     } catch (error) {
       console.error("등록 에러:", error);

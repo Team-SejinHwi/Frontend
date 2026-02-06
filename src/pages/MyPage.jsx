@@ -171,7 +171,7 @@ export default function MyPage() {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
-                    'ngrok-skip-browser-warning': '69420',
+                    ...TUNNEL_HEADERS,
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify(updateData)

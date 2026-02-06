@@ -6,7 +6,7 @@ import SockJS from 'sockjs-client';
 // UI 컴포넌트 (MUI)
 import {
   Box, TextField, IconButton, AppBar, Toolbar, Avatar, Typography,
-  Paper, Stack, CircularProgress
+  Paper, CircularProgress
 } from '@mui/material';
 
 // 아이콘
@@ -78,7 +78,7 @@ const ChatRoom = () => {
         const historyRes = await fetch(`${API_BASE_URL}/api/chat/room/${roomId}/messages`, {
           headers: {
             'Authorization': `Bearer ${token}`,
-            'Bypass-Tunnel-Reminder': 'true'
+            ...TUNNEL_HEADERS
           }
         });
         if (historyRes.ok) {
