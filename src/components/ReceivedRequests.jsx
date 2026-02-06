@@ -14,7 +14,7 @@ import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn'; // [NEW
 import dayjs from 'dayjs';
 
 import { API_BASE_URL, IS_MOCK_MODE, TUNNEL_HEADERS } from '../config';
-import { mockReceivedRentals } from '../mocks/mockData';
+import { mockReceivedRentals, mockItems } from '../mocks/mockData';
 
 // =================================================================
 // 0. 상태별 디자인 설정 (v.02.05 명세 반영)
@@ -84,9 +84,9 @@ export default function ReceivedRequests() {
     if (!window.confirm("이 대여 요청을 승인하시겠습니까?")) return;
 
     if (IS_MOCK_MODE) {
-        alert("[Mock] 승인되었습니다.");
-        setRequests(prev => prev.map(r => r.rentalId === rentalId ? { ...r, status: 'APPROVED' } : r));
-        return;
+      alert("[Mock] 승인되었습니다.");
+      setRequests(prev => prev.map(r => r.rentalId === rentalId ? { ...r, status: 'APPROVED' } : r));
+      return;
     }
 
     try {
@@ -128,10 +128,10 @@ export default function ReceivedRequests() {
     }
 
     if (IS_MOCK_MODE) {
-        alert(`[Mock] 거절됨 (사유: ${rejectReason})`);
-        setRequests(prev => prev.map(r => r.rentalId === selectedRentalId ? { ...r, status: 'REJECTED' } : r));
-        setOpenRejectDialog(false);
-        return;
+      alert(`[Mock] 거절됨 (사유: ${rejectReason})`);
+      setRequests(prev => prev.map(r => r.rentalId === selectedRentalId ? { ...r, status: 'REJECTED' } : r));
+      setOpenRejectDialog(false);
+      return;
     }
 
     try {
@@ -144,8 +144,8 @@ export default function ReceivedRequests() {
           ...TUNNEL_HEADERS
         },
         body: JSON.stringify({
-            approved: false,
-            rejectReason: rejectReason // ✅ 명세서 필수 조건 충족
+          approved: false,
+          rejectReason: rejectReason // ✅ 명세서 필수 조건 충족
         })
       });
 
@@ -167,9 +167,16 @@ export default function ReceivedRequests() {
     if (!window.confirm("물건을 돌려받으셨나요?\n반납 완료 처리를 하면 상품이 다시 '대여 가능' 상태로 변경됩니다.")) return;
 
     if (IS_MOCK_MODE) {
-        alert("[Mock] 반납 확인 완료");
-        setRequests(prev => prev.map(r => r.rentalId === rentalId ? { ...r, status: 'RETURNED' } : r));
-        return;
+      alert("[Mock] 반납 확인 완료");
+      setRequests(prev => prev.map(r => r.rentalId === rentalId ? { ...r, status: 'RETURNED' } : r));
+
+      // [추가] 해당 상품의 상태도 AVAILABLE로 변경 (시뮬레이션)
+      const targetRental = requests.find(r => r.rentalId === rentalId);
+      if (targetRental) {
+        const item = mockItems.find(i => i.itemId === targetRental.itemId);
+        if (item) item.itemStatus = 'AVAILABLE';
+      }
+      return;
     }
 
     try {
@@ -211,7 +218,7 @@ export default function ReceivedRequests() {
         <Stack spacing={2}>
           {requests.map((req) => {
             const statusStyle = STATUS_CONFIG[req.status] || STATUS_CONFIG.WAITING;
-            
+
             return (
               <Card key={req.rentalId} elevation={2} sx={{ borderLeft: req.status === 'WAITING' ? '5px solid #ed6c02' : 'none' }}>
                 <CardContent>
@@ -246,17 +253,17 @@ export default function ReceivedRequests() {
                       {/* Case 1: 대기 상태일 때 -> [승인/거절] 버튼 */}
                       {req.status === 'WAITING' && (
                         <Stack direction="row" spacing={1} justifyContent={{ xs: 'flex-start', sm: 'flex-end' }}>
-                          <Button 
-                            variant="contained" 
-                            color="primary" 
+                          <Button
+                            variant="contained"
+                            color="primary"
                             size="small"
                             onClick={() => handleApprove(req.rentalId)}
                           >
                             승인
                           </Button>
-                          <Button 
-                            variant="outlined" 
-                            color="error" 
+                          <Button
+                            variant="outlined"
+                            color="error"
                             size="small"
                             onClick={() => openRejectModal(req.rentalId)}
                           >
@@ -268,9 +275,9 @@ export default function ReceivedRequests() {
                       {/* Case 2: 대여 중 상태일 때 -> [반납 확인] 버튼 (NEW) */}
                       {req.status === 'RENTING' && (
                         <Box>
-                          <Button 
-                            variant="contained" 
-                            color="info" 
+                          <Button
+                            variant="contained"
+                            color="info"
                             size="small"
                             startIcon={<AssignmentReturnIcon />}
                             onClick={() => handleReturnConfirm(req.rentalId)}
@@ -293,26 +300,26 @@ export default function ReceivedRequests() {
       <Dialog open={openRejectDialog} onClose={() => setOpenRejectDialog(false)} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 'bold' }}>🚫 대여 거절 사유 입력</DialogTitle>
         <DialogContent dividers>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                신청자에게 거절 사유를 알려주세요. (명세서상 필수 입력 항목입니다)
-            </Typography>
-            <TextField
-                autoFocus
-                margin="dense"
-                label="거절 사유"
-                type="text"
-                fullWidth
-                multiline
-                rows={3}
-                variant="outlined"
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="예: 해당 기간에는 이미 다른 오프라인 예약이 있습니다."
-            />
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            신청자에게 거절 사유를 알려주세요. (명세서상 필수 입력 항목입니다)
+          </Typography>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="거절 사유"
+            type="text"
+            fullWidth
+            multiline
+            rows={3}
+            variant="outlined"
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="예: 해당 기간에는 이미 다른 오프라인 예약이 있습니다."
+          />
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
-            <Button onClick={() => setOpenRejectDialog(false)} color="inherit">취소</Button>
-            <Button onClick={handleRejectConfirm} variant="contained" color="error">거절 확정</Button>
+          <Button onClick={() => setOpenRejectDialog(false)} color="inherit">취소</Button>
+          <Button onClick={handleRejectConfirm} variant="contained" color="error">거절 확정</Button>
         </DialogActions>
       </Dialog>
     </Box>

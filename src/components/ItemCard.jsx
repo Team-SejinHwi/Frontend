@@ -12,23 +12,28 @@ export default function ItemCard({ item }) {
     return `${API_BASE_URL}${url}`;
   };
 
-  // 상태에 따른 라벨 및 색상 결정 함수
+  // 🌟 [개선] AVAILABLE이 아닌 모든 상태에 대해 적절한 라벨을 표시합니다.
   const getStatusOverlay = (status) => {
-    if (status === 'RENTED') {
-      return (
-        <Box sx={{
-          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-          bgcolor: 'rgba(0, 0, 0, 0.6)', // 검은 반투명 배경
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1
+    if (status === 'AVAILABLE') return null; // 대여 가능하면 표시 안 함
+
+    // 상세 페이지와 통일된 라벨 결정 (RENTED 또는 SOLD OUT)
+    const label = status === 'RENTED' ? 'RENTED' : 'SOLD OUT';
+
+    return (
+      <Box sx={{
+        position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+        bgcolor: 'rgba(0, 0, 0, 0.5)', //  반투명 배경
+        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1
+      }}>
+        <Typography variant="h5" sx={{
+          color: 'white', fontWeight: 'bold', border: '2px solid white', px: 2, py: 1, borderRadius: 2,
+          transform: 'rotate(-15deg)', // 상세 페이지의 회전 스타일 적용
+          textShadow: '2px 2px 4px rgba(0,0,0,0.5)'
         }}>
-          <Typography variant="h5" sx={{ color: 'white', fontWeight: 'bold', border: '2px solid white', px: 2, py: 1, borderRadius: 2 }}>
-            대여중
-          </Typography>
-        </Box>
-      );
-    }
-    // 필요한 경우 'RESERVED'(예약중) 등 다른 상태도 추가 가능
-    return null;
+          {label}
+        </Typography>
+      </Box>
+    );
   };
 
   return (
@@ -37,10 +42,10 @@ export default function ItemCard({ item }) {
       sx={{
         cursor: 'pointer', maxWidth: 345, borderRadius: 2, boxShadow: 3,
         transition: '0.3s', position: 'relative', // overlay 위치 잡기 위해 relative 필수
-        '&:hover': { transform: 'scale(1.02)' }
+        '&:hover': { transform: 'scale(1.02)', boxShadow: 6 }
       }}
     >
-      {/* 1. 상태 오버레이 (대여중일 때만 뜸) */}
+      {/* 1. 상태 오버레이 랜더링 */}
       {getStatusOverlay(item.itemStatus)}
 
       <CardMedia

@@ -49,7 +49,7 @@ export const mockItems = [
     itemId: 8,
     title: "이케아 의자 빌려드립니다",
     category: "FURNITURE",
-    price: 500,
+    price: 400,
     location: "인천시 남동구",
     content: "자취방 뺄 때까지만 잠깐 쓰실 분?\n이케아 기본 의자입니다. 튼튼해요.\n\n인천시청역 근처에서 가져가셔야 합니다.\n(배달 불가능, 직접 수령 필수)",
     itemStatus: "AVAILABLE",
@@ -66,7 +66,30 @@ export const mockItems = [
       email: "guest@example.com",
       name: "게스트"
     }
-  }
+  },
+
+  {
+    itemId: 7,
+    title: "스테이플러 ",
+    category: "TOOL",
+    price: 500,
+    location: "경기도 부천시 원미구",
+    content: " 공구 빌려드려요!",
+    itemStatus: "RENTING",
+    itemImageUrl: "https://i.postimg.cc/PrQr5XjN/stapler.jpg",
+    createdAt: "2026-01-25T17:00:00",
+
+    // 지도 테스트용 좌표 데이터 (상동역)
+    tradeLatitude: 37.505818,
+    tradeLongitude: 126.753112,
+    tradeAddress: "경기도 부천시 원미구 길주로 지하 104",
+
+    owner: {
+      memberId: 4,
+      email: "test@naver.com",
+      name: "렌탈이"
+    }
+  },
 ];
 
 export const mockUser = {
@@ -98,10 +121,31 @@ export const mockReceivedRentals = [
     totalPrice: 50000,
     startDate: "2026-01-28T12:00:00",
     endDate: "2026-01-28T16:00:00"
+  },
+
+  {
+    rentalId: 103, // 👈 [추가] 반납 확인 버튼 테스트용
+    itemId: 10,
+    itemTitle: "맥북 프로 M3 빌려드립니다",
+    renterName: "테스터",
+    status: "RENTING", // 현재 대여 중 상태
+    totalPrice: 80000,
+    startDate: "2026-02-04T10:00:00",
+    endDate: "2026-02-05T10:00:00"
   }
 ];
 
 export const mockMyRentals = [
+  {
+    rentalId: 202, // 👈 [추가] 반납 하기 버튼 테스트용
+    itemId: 9,
+    itemTitle: "캠핑용 텐트 (4인용)",
+    ownerName: "캠핑족",
+    status: "RENTING", // 대여 중인 상태
+    totalPrice: 24000,
+    startDate: "2026-02-10T10:00:00",
+    endDate: "2026-02-11T10:00:00"
+  },
   {
     rentalId: 201,
     itemId: 9,
