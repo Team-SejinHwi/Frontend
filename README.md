@@ -15,6 +15,7 @@
   * **심화 CRUD:** 이미지(File)와 JSON의 복합 데이터 처리 및 `Blob` 직렬화 구현
   * **실시간 통신:** `WebSocket(Stomp)`을 활용한 1:1 채팅 및 상태 동기화
   * **LBS(위치 기반):** `Kakao Maps API`를 활용한 반경 검색 및 **역지오코딩(Reverse Geocoding)** 구현
+  * **UI/UX 고도화:** 최신 트렌드를 반영한 레이아웃 리팩토링 및 마이크로 인터랙션 적용
   * **거래 프로세스:** 대여 신청 → 승인/거절 → 반납 → **상태 자동 복구(State Recovery)** 로직 완성
   * **신뢰도 시스템:** 거래 완료 건에 한정된 **리뷰 및 평점 시스템** 구축
 
@@ -54,10 +55,11 @@
 - **역지오코딩 (Reverse Geocoding):** 지도 클릭 시 `Kakao Geocoder`를 통해 좌표(Lat/Lng)를 주소 텍스트로 실시간 변환하여 입력 편의성을 높였습니다.
 - **주소 검색:** `Daum Postcode API`로 도로명 주소를 검색하고, 좌표로 자동 변환하여 DB에 저장합니다.
 
-### D. 🔄 대여 신청 및 상태 순환 (Rental Lifecycle) - [NEW 🚀]
+### D. 🔄 대여 신청 및 상태 순환 (Rental Lifecycle)
 - **중복 요청 방지 (Debounce):** 대여 신청 버튼 클릭 시 Debounce 로직을 적용하여 네트워크 지연 시 발생할 수 있는 중복 API 호출을 차단했습니다.
 - **상태 기반 UI:** 상품 상태(AVAILABLE, RENTING, COMPLETED)에 따라 버튼 텍스트와 활성화 여부가 동적으로 변경됩니다.
-- **반납 및 복구 로직:** - `RENTING`(대여 중) → `RETURNED`(반납 완료) 상태 전환 API 구현.
+- **반납 및 복구 로직:**
+  - `RENTING`(대여 중) → `RETURNED`(반납 완료) 상태 전환 API 구현.
   - 반납 완료 시 Item 상태가 자동으로 `AVAILABLE`(대여 가능)로 복구되는 **상태 연쇄 업데이트(Chaining)** 로직을 완성했습니다.
 
 ### E. 💬 실시간 1:1 채팅 (Real-time Chat)
@@ -68,6 +70,19 @@
 - **신뢰도 강화:** 대여 상태가 `COMPLETED`(반납 완료)인 경우에만 후기 작성 버튼이 활성화되도록 제어하여 허위 리뷰를 방지합니다.
 - **실시간 반영:** 상품 상세 페이지 진입 시 `Promise.all`을 이용해 상품 정보와 리뷰 목록을 병렬로 호출하며, 평균 평점을 즉시 계산하여 시각화합니다.
 
+### G. 🎨 UI/UX 및 디자인 시스템 고도화 (UI/UX Refactoring) - [NEW 🚀]
+- **메인 카테고리 (Iconography):**
+  - 기존 텍스트 칩을 최신 트렌드를 반영한 **'아이콘+텍스트' 원형 버튼**으로 전면 개편했습니다.
+  - `React.cloneElement`를 활용해 아이콘 스타일을 동적으로 주입하고, Hover 시 `translateY` 및 Shadow 효과를 적용하여 클릭 유도성(Affordance)을 개선했습니다.
+- **아이템 카드 리팩토링 (Elevation & Interaction):**
+  - **입체감 부여:** 부드러운 `borderRadius(16px)`와 은은한 `box-shadow`를 적용하여 시각적 안정성을 확보했습니다.
+  - **마이크로 인터랙션:** Hover 시 `scale(1.05)` 확대 및 위치 이동 효과를 결합하여 사용자의 선택에 대한 즉각적인 피드백을 제공합니다.
+  - **가독성 최적화:** 가격 정보의 Weight를 높이고 긴 위치 정보를 파싱하여 정보의 우선순위를 재정립했습니다.
+- **상세 페이지 레이아웃 (Airbnb Style Layout):**
+  - **2컬럼 그리드 시스템:** 기존 수직 나열 방식을 탈피하여 **콘텐츠(8) : 액션(4)** 비율로 분리, 정보 탐색과 결제 동선을 명확히 했습니다.
+  - **Sticky UI:** 우측 액션(결제/예약) 카드에 `position: sticky`를 적용하여 긴 스크롤 중에도 언제든 접근 가능하도록 사용성을 높였습니다.
+  - **반응형 대응:** 노트북(`md`) 및 모바일(`xs`) 해상도에 맞춰 자동으로 1컬럼으로 전환되는 반응형 그리드를 구현했습니다.
+
 <br>
 
 ## 4. ⚙️ 개발 환경 설정 (Environment)
@@ -77,33 +92,31 @@
 
 <br>
 
-## 5. 📂 프로젝트 구조 (Directory Structure) (v1.2.2)
+## 5. 📂 프로젝트 구조 (Directory Structure) (v1.2.3)
 ```bash
 src
 ├── components          # 재사용 가능한 UI 컴포넌트
 │   ├── ChatList.jsx        # 채팅방 목록 아이템
-│   ├── ItemCard.jsx        # 상품 카드 (메인/검색)
-│   ├── ReceivedRequests.jsx # 받은 요청 관리 (수락/거절 & 반납 확인)
+│   ├── ItemCard.jsx        # 상품 카드 (UI 리팩토링 완료)
+│   ├── ReceivedRequests.jsx # 받은 요청 관리
 │   ├── RentalModal.jsx     # 대여 신청 및 계산 모달
-│   ├── ReviewModal.jsx     # 후기 작성 모달 (별점 & 텍스트)
-│   └── SentRequests.jsx    # 보낸 요청 관리 (상태 확인 & 반납 요청 & 후기 작성)
+│   ├── ReviewModal.jsx     # 후기 작성 모달
+│   └── SentRequests.jsx    # 보낸 요청 관리
 ├── constants           # 상수 및 공통 데이터 관리
-│   └── categories.js       # 카테고리 Enum 코드 및 라벨 변환 함수
+│   └── categories.js       # 카테고리 아이콘 및 매핑 객체 관리
 ├── mocks               # 프론트엔드 독립 테스트 데이터
-│   └── mockData.js         # 가상 상품/유저/거래/리뷰 데이터
+│   └── mockData.js         # 가상 데이터 셋
 ├── pages               # 라우팅 페이지 (Screen)
 │   ├── ChatRoom.jsx        # 1:1 실시간 채팅방
-│   ├── Home.jsx            # 메인 (위치 기반 필터링 & 지도)
-│   ├── ItemDetail.jsx      # 상품 상세 (신청/리뷰 & 상태 기반 버튼)
-│   ├── ItemEdit.jsx        # 상품 수정 (역지오코딩 적용)
-│   ├── ItemRegister.jsx    # 상품 등록 (역지오코딩 적용)
+│   ├── Home.jsx            # 메인 (카테고리 UI 개편)
+│   ├── ItemDetail.jsx      # 상품 상세 (Grid & Sticky UI 적용)
+│   ├── ItemEdit.jsx        # 상품 수정
+│   ├── ItemRegister.jsx    # 상품 등록
 │   ├── Login.jsx           # 로그인 페이지
-│   ├── MyPage.jsx          # 마이페이지 (탭 관리)
+│   ├── MyPage.jsx          # 마이페이지
 │   └── Signup.jsx          # 회원가입 페이지
 ├── App.css             # 앱 컴포넌트 전역 스타일
-├── App.jsx             # 라우터(Router) 및 전역 레이아웃 설정
-├── config.js           # API Base URL 및 모드 설정 (Mock/Real)
-├── index.css           # 초기 스타일 리셋 및 폰트 설정
-├── index.js            # React 앱 진입점 (Entry Point)
-├── reportWebVitals.js  # 성능 측정 도구
-└── setupProxy.js       # CRA 프록시 설정 (CORS 해결 및 백엔드 통신)
+├── App.jsx             # 라우터 및 전역 설정
+├── config.js           # API 설정
+├── index.css           # 초기 스타일 리셋
+└── setupProxy.js       # CRA 프록시 설정
