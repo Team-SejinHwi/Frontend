@@ -223,28 +223,30 @@ export default function ItemDetail() {
   // =================================================================
   // 5. 하단 버튼 렌더링 (주인 vs 구매자)
   // =================================================================
+  // [수정] 버튼 스타일(borderRadius, boxShadow) 고도화 (2026.02.09)
   const renderActionButtons = () => {
     // 주인일 경우: 수정/삭제 버튼
+
     if (isOwner) {
       return (
         <Stack direction="row" spacing={2} sx={{ width: '100%', mt: 2 }}>
-          <Button
-            variant="outlined"
+          <Button      // 수정 버튼 
+            variant="contained"
             color="primary"
             startIcon={<EditIcon />}
             onClick={() => navigate(`/items/edit/${id}`)}
             fullWidth
-            sx={{ py: 1.5, fontWeight: 'bold' }}
+            sx={{ py: 1.5, fontWeight: 'bold', borderRadius: 2 }}
           >
             수정
           </Button>
-          <Button
+          <Button // 삭제 버튼 (Outlined 유지하되 텍스트/테두리 색상 명확히)
             variant="outlined"
             color="error"
             startIcon={<DeleteIcon />}
             onClick={handleDelete}
             fullWidth
-            sx={{ py: 1.5, fontWeight: 'bold' }}
+            sx={{ py: 1.5, fontWeight: 'bold', borderRadius: 2 }}
           >
             삭제
           </Button>
@@ -263,19 +265,19 @@ export default function ItemDetail() {
           color="primary"
           startIcon={<ChatIcon />}
           onClick={handleChatStart}
-          sx={{ flex: 1, py: 1.5, fontWeight: 'bold', borderWidth: 2 }}
+          sx={{ flex: 1, py: 1.5, fontWeight: 'bold', borderWidth: 2, borderRadius: 2 }}
         >
           문의하기
         </Button>
 
-        {/* [수정됨] 대여 가능하면서, 아직 신청하지 않은 경우에만 버튼 활성화 */}
+        {/* 대여 가능하면서, 아직 신청하지 않은 경우에만 버튼 활성화 */}
         {isAvailable && !alreadyRequested ? (
           <Button
             variant="contained"
             color="primary"
             startIcon={<EventAvailableIcon />}
             onClick={handleOpenModal}
-            sx={{ flex: 2, py: 1.5, fontWeight: 'bold', boxShadow: 3 }}
+            sx={{ flex: 2, py: 1.5, fontWeight: 'bold', boxShadow: 3, borderRadius: 2 }}
           >
             대여 신청
           </Button>
@@ -285,7 +287,7 @@ export default function ItemDetail() {
             color="inherit"
             disabled
             startIcon={<BlockIcon />}
-            sx={{ flex: 2, py: 1.5, fontWeight: 'bold', bgcolor: '#ccc', color: '#666' }}
+            sx={{ flex: 2, py: 1.5, fontWeight: 'bold', bgcolor: '#ccc', color: '#666', borderRadius: 2 }}
           >
             {/* 상태 메시지 분기 처리 */}
             {alreadyRequested ? '이미 신청함' : (item.itemStatus === 'RENTED' ? '대여중 (신청불가)' : '거래 완료')}
@@ -304,29 +306,46 @@ export default function ItemDetail() {
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
     : 0;
 
+
+  // [수정] UI 렌더링 전체 (좌측: 콘텐츠+지도+후기 / 우측: 스티키 결제창) (2026.02.09 리팩토링)
+
   return (
-    <Container maxWidth="md" sx={{ py: 5 }}>
+    <Container maxWidth="lg" sx={{ py: 6 }}> {/* 가독성을 위해 lg로 조정 */}
       {/* 뒤로가기 버튼 */}
       <Button
         startIcon={<ArrowBackIcon />}
         onClick={() => navigate('/')}
-        sx={{ mb: 2, fontWeight: 'bold', color: '#666' }}
+        sx={{ mb: 3, fontWeight: 'bold', color: '#666', '&:hover': { bgcolor: 'transparent', color: 'primary.main' } }}
       >
         목록으로 돌아가기
       </Button>
 
-      <Paper elevation={3} sx={{ borderRadius: 4, overflow: 'hidden' }}>
-        <Grid container>
-          {/* 상품 이미지 영역 */}
-          <Grid item xs={12} md={6} sx={{ bgcolor: '#f4f4f4', minHeight: '400px', position: 'relative' }}>
-            {/* 품절/대여중 오버레이 표시 */}
+      <Grid container spacing={4}>
+
+        {/* ===========================================================
+            [LEFT COLUMN] 콘텐츠 영역 (사진, 설명, 지도, 후기) - md={8}
+            =========================================================== */}
+        <Grid item xs={12} sm={7} md={8}>
+
+          {/* A. 상품 이미지 */}
+          <Box sx={{
+            position: 'relative',
+            borderRadius: 4,
+            overflow: 'hidden',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.08)',
+            bgcolor: 'white',
+            height: { md: '500px', xs: '300px' },
+            mb: 5
+          }}>
+            {/* ✨ 모던 오버레이 스타일 (블러 효과 적용) */}
             {item.itemStatus !== 'AVAILABLE' && (
               <Box sx={{
                 position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-                bgcolor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1
+                bgcolor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                zIndex: 10, backdropFilter: 'blur(4px)'
               }}>
-                <Typography variant="h3" sx={{ color: 'white', fontWeight: 'bold', border: '4px solid white', p: 2, borderRadius: 2, transform: 'rotate(-15deg)' }}>
-                  {item.itemStatus === 'RENTED' ? 'RENTED' : 'SOLD OUT'}
+                <Typography variant="h3" sx={{ color: 'white', fontWeight: '800', textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
+                  {item.itemStatus === 'RENTED' ? '대여 중' : '거래 완료'}
                 </Typography>
               </Box>
             )}
@@ -334,167 +353,185 @@ export default function ItemDetail() {
               component="img"
               src={getImageUrl(item.itemImageUrl)}
               alt={item.title}
-              sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              sx={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
             />
-          </Grid>
+          </Box>
 
-          {/* 상품 상세 텍스트 영역 */}
-          <Grid item xs={12} md={6} sx={{ p: 4, display: 'flex', flexDirection: 'column' }}>
-
-            {/* 카테고리 및 날짜 */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          {/* B. 상품 헤더 및 판매자 정보 */}
+          <Box sx={{ mb: 5 }}>
+            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
               {item.category && (
                 <Chip
                   label={item.categoryName || item.category}
                   color="primary"
                   variant="outlined"
                   size="small"
-                  sx={{ fontWeight: 'bold' }}
+                  sx={{ fontWeight: '800' }}
                 />
               )}
-              <Typography variant="caption" color="text.secondary">
-                {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ""}
+              <Typography variant="caption" sx={{ color: '#bbb', fontWeight: '500' }}>
+                {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ""} 등록
               </Typography>
-            </Box>
+            </Stack>
 
-            {/* 제목 및 가격 */}
-            <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1, wordBreak: 'keep-all' }}>
+            <Typography variant="h4" sx={{ fontWeight: '800', mb: 3, wordBreak: 'keep-all', color: '#1a1a1a', lineHeight: 1.3 }}>
               {item.title}
             </Typography>
-            <Typography variant="h5" color="primary" sx={{ fontWeight: 'bold', mb: 3 }}>
-              {item.price?.toLocaleString()}원
-              <Typography component="span" variant="body1" color="text.secondary" sx={{ ml: 0.5 }}>
-                / 시간
-              </Typography>
-            </Typography>
 
-            <Divider sx={{ mb: 3 }} />
-
-            {/* 판매자 정보 및 위치 */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-              <Avatar sx={{ bgcolor: 'secondary.main', mr: 2 }}>
+            <Stack direction="row" alignItems="center" spacing={2}>
+              <Avatar sx={{ bgcolor: 'primary.light', width: 50, height: 50, fontSize: '1.2rem', fontWeight: 'bold' }}>
                 {item.owner?.name ? item.owner.name[0] : 'U'}
               </Avatar>
               <Box>
-                <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                  {item.owner?.name || '알 수 없는 사용자'}
+                <Typography variant="subtitle1" sx={{ fontWeight: '800', color: '#333' }}>
+                  호스트: {item.owner?.name || '알 수 없는 사용자'}
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <PlaceIcon sx={{ fontSize: 16, color: 'text.secondary', mr: 0.5 }} />
-                  <Typography variant="caption" color="text.secondary">
+                  <PlaceIcon sx={{ fontSize: 14, color: '#999', mr: 0.5 }} />
+                  <Typography variant="caption" sx={{ color: '#777', fontWeight: '500' }}>
                     {item.tradeAddress || item.location || '위치 정보 없음'}
                   </Typography>
                 </Box>
               </Box>
-            </Box>
+            </Stack>
+            <Divider sx={{ mt: 3 }} />
+          </Box>
 
-            {/* 상세 설명 */}
-            <Box sx={{ flexGrow: 1, minHeight: '100px', p: 2, bgcolor: '#fafafa', borderRadius: 2, mb: 3 }}>
-              <Typography variant="body1" sx={{ whiteSpace: 'pre-line', color: '#444' }}>
-                {item.content || "상세 설명이 없습니다."}
+          {/* C. 상세 설명 */}
+          <Box sx={{ mb: 6 }}>
+            <Typography variant="h6" sx={{ fontWeight: '800', mb: 2, color: '#333' }}>상품 설명</Typography>
+            <Typography variant="body1" sx={{ whiteSpace: 'pre-line', color: '#444', lineHeight: 1.8, fontSize: '1rem' }}>
+              {item.content || "상세 설명이 없습니다."}
+            </Typography>
+          </Box>
+
+          <Divider sx={{ mb: 6 }} />
+
+          {/* D. 거래 희망 장소 (지도) - 왼쪽으로 이동 */}
+          {item.tradeLatitude && item.tradeLongitude && (
+            <Box sx={{ mb: 6 }}>
+              <Typography variant="h6" sx={{ fontWeight: '800', mb: 2.5, display: 'flex', alignItems: 'center' }}>
+                <PlaceIcon color="primary" sx={{ mr: 1 }} />
+                거래 희망 장소
               </Typography>
-            </Box>
 
-            {/* 거래 위치 지도 (카카오맵) */}
-            {item.tradeLatitude && item.tradeLongitude && (
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, display: 'flex', alignItems: 'center' }}>
-                  <PlaceIcon color="primary" sx={{ mr: 0.5 }} />
-                  거래 희망 장소
-                </Typography>
-                <Box sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid #ddd', position: 'relative' }}>
-                  <Map
-                    center={{ lat: item.tradeLatitude, lng: item.tradeLongitude }}
-                    style={{ width: "100%", height: "200px" }}
-                    level={4}
-                    draggable={false}
-                    zoomable={false}
-                  >
-                    <MapMarker
-                      position={{ lat: item.tradeLatitude, lng: item.tradeLongitude }}
-                      onClick={() => window.open(`https://map.kakao.com/link/to/${item.title},${item.tradeLatitude},${item.tradeLongitude}`, '_blank')}
-                    />
-                  </Map>
-                  {/* 클릭 시 길찾기 이동을 위한 투명 레이어 */}
-                  <Box
-                    sx={{
-                      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                      cursor: 'pointer', zIndex: 10
-                    }}
-                    onClick={() => window.open(`https://map.kakao.com/link/to/${item.title},${item.tradeLatitude},${item.tradeLongitude}`, '_blank')}
-                    title="클릭하면 길찾기로 연결됩니다"
-                  />
-                </Box>
+              <Box sx={{
+                borderRadius: 4,
+                overflow: 'hidden',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+                position: 'relative',
+                border: '1px solid #eee',
+                height: '400px'
+              }}>
+                <Map
+                  center={{ lat: item.tradeLatitude, lng: item.tradeLongitude }}
+                  style={{ width: "100%", height: "100%" }}
+                  level={3}
+                  draggable={false}
+                  zoomable={false}
+                >
+                  <MapMarker position={{ lat: item.tradeLatitude, lng: item.tradeLongitude }} />
+                </Map>
+                <Box
+                  sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: 'pointer', zIndex: 10 }}
+                  onClick={() => window.open(`https://map.kakao.com/link/to/${item.title},${item.tradeLatitude},${item.tradeLongitude}`, '_blank')}
+                  title="카카오맵에서 크게 보기"
+                />
               </Box>
-            )}
-
-            {/* 하단 버튼 영역 */}
-            <Box sx={{ mt: 'auto' }}>
-              {renderActionButtons()}
             </Box>
-          </Grid>
-        </Grid>
-      </Paper>
-
-      {/* 🌟 [NEW] 이용 후기 섹션 */}
-      <Box sx={{ mt: 5 }}>
-        <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2, display: 'flex', alignItems: 'center' }}>
-          ⭐ 이용 후기 ({reviews.length})
-          {reviews.length > 0 && (
-            <Typography component="span" variant="h6" color="primary" sx={{ ml: 1, fontWeight: 'bold' }}>
-              {averageRating} / 5.0
-            </Typography>
           )}
-        </Typography>
 
-        <Paper elevation={1} sx={{ borderRadius: 3, p: 2 }}>
-          {reviews.length === 0 ? (
-            <Typography color="text.secondary" align="center" sx={{ py: 4 }}>
-              아직 작성된 후기가 없습니다. 첫 번째 후기를 남겨보세요!
+          <Divider sx={{ mb: 6 }} />
+
+          {/* E. 이용 후기 섹션 - 왼쪽으로 이동 */}
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: '800', mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <span>⭐ 이용 후기 ({reviews.length}개)</span>
+              {reviews.length > 0 && (
+                <Typography component="span" variant="h6" color="text.secondary" sx={{ fontWeight: '500', ml: 1 }}>
+                  (평점 {averageRating})
+                </Typography>
+              )}
             </Typography>
-          ) : (
-            <List>
-              {reviews.map((review, index) => (
-                <React.Fragment key={review.reviewId || index}>
-                  <ListItem alignItems="flex-start">
-                    <ListItemAvatar>
-                      <Avatar>{review.reviewerName ? review.reviewerName[0] : '익'}</Avatar>
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={
-                        <Box display="flex" justifyContent="space-between" alignItems="center">
-                          <Typography variant="subtitle1" fontWeight="bold">
-                            {review.reviewerName || "익명 사용자"}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {review.createdAt ? new Date(review.createdAt).toLocaleDateString() : ""}
-                          </Typography>
-                        </Box>
-                      }
-                      secondaryTypographyProps={{ component: 'div' }}
-                      secondary={
-                        <Box mt={0.5}>
-                          <Rating value={review.rating} readOnly size="small" />
-                          <Typography variant="body2" color="text.primary" sx={{ mt: 1 }}>
-                            {review.content}
-                          </Typography>
-                        </Box>
-                      }
-                    />
-                  </ListItem>
-                  {index < reviews.length - 1 && <Divider variant="inset" component="li" />}
-                </React.Fragment>
-              ))}
+
+            <List sx={{ p: 0 }}>
+              {reviews.length === 0 ? (
+                <Typography color="text.secondary" sx={{ py: 4 }}>아직 작성된 후기가 없습니다.</Typography>
+              ) : (
+                reviews.map((review, index) => (
+                  <React.Fragment key={review.reviewId || index}>
+                    <ListItem alignItems="flex-start" sx={{ px: 0, py: 3 }}>
+                      <ListItemAvatar>
+                        <Avatar sx={{ bgcolor: 'secondary.light', fontWeight: 'bold' }}>{review.reviewerName ? review.reviewerName[0] : '익'}</Avatar>
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={
+                          <Box display="flex" justifyContent="space-between" alignItems="center">
+                            <Typography variant="subtitle1" fontWeight="800">{review.reviewerName || "익명 사용자"}</Typography>
+                            <Typography variant="caption" color="text.secondary">{review.createdAt ? new Date(review.createdAt).toLocaleDateString() : ""}</Typography>
+                          </Box>
+                        }
+                        secondary={
+                          <Box mt={1}>
+                            <Rating value={review.rating} readOnly size="small" />
+                            <Typography variant="body1" sx={{ mt: 1, color: '#333', lineHeight: 1.6 }}>{review.content}</Typography>
+                          </Box>
+                        }
+                      />
+                    </ListItem>
+                    {index < reviews.length - 1 && <Divider component="li" />}
+                  </React.Fragment>
+                ))
+              )}
             </List>
-          )}
-        </Paper>
-      </Box>
+          </Box>
 
-     {/* 대여 신청 모달 */}
+        </Grid>
+
+        {/* ===========================================================
+            [RIGHT COLUMN] 스티키 액션 카드 (가격 + 예약버튼) - md={4}
+            =========================================================== */}
+       <Grid item xs={12} sm={5} md={4}>
+          <Box sx={{ position: 'sticky', top: 100 }}> {/* 스크롤 따라오게 설정 */}
+            <Paper
+              elevation={0}
+              sx={{
+                p: 4,
+                borderRadius: 4,
+                border: '1px solid #e0e0e0',
+                bgcolor: 'white',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.08)',
+              }}
+            >
+              {/* 1. 가격 정보 */}
+              <Typography variant="h4" color="primary" sx={{ fontWeight: '900', mb: 1, display: 'flex', alignItems: 'baseline' }}>
+                {item.price?.toLocaleString()}원
+                <Typography component="span" variant="body1" sx={{ ml: 1, color: '#666', fontWeight: '600' }}>
+                  / 시간
+                </Typography>
+              </Typography>
+
+              <Divider sx={{ my: 3 }} />
+
+              {/* 2. 하단 버튼 영역 */}
+              <Box>
+                {renderActionButtons()}
+              </Box>
+
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 3, textAlign: 'center' }}>
+                거래 시 안전결제가 적용됩니다.
+              </Typography>
+            </Paper>
+          </Box>
+        </Grid>
+
+      </Grid>
+
+      {/* 대여 신청 모달 */}
       <RentalModal
         open={isRentalModalOpen}
         onClose={() => setRentalModalOpen(false)}
-        onRentalSuccess={handleRentalSuccess} 
+        onRentalSuccess={handleRentalSuccess}
         item={item}
       />
     </Container>
