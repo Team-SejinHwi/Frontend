@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-//  지도 및 주소 검색 라이브러리 
+
+//  카카오맵 & 주소검색 라이브러리 추가
 import { Map, MapMarker } from 'react-kakao-maps-sdk';
 import DaumPostcode from 'react-daum-postcode';
 
-// UI 컴포넌트 (Material UI) - 
+// UI 컴포넌트 import (MUI)  - 
 import {
   Box, Container, Typography, TextField, Button, Paper, Stack, IconButton, CircularProgress,
   FormControl, InputLabel, Select, MenuItem, InputAdornment, Dialog, DialogContent, Divider, Grid

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+
 //  카카오맵 & 주소검색 라이브러리 추가
 import { Map, MapMarker } from 'react-kakao-maps-sdk';
 import DaumPostcode from 'react-daum-postcode';
@@ -11,7 +12,7 @@ import {
   Divider, Grid
 } from '@mui/material';
 
-// 아이콘 - [ClearIcon 추가됨]
+// 아이콘 
 import PhotoCamera from '@mui/icons-material/PhotoCamera';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SearchIcon from '@mui/icons-material/Search';
@@ -312,37 +313,42 @@ export default function ItemRegister({ isLoggedIn }) {
                 variant="outlined"
               />
 
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth required>
-                    <InputLabel>카테고리</InputLabel>
-                    <Select
-                      name="category"
-                      value={values.category}
-                      label="카테고리"
-                      onChange={handleChange}
-                    >
-                      {CATEGORIES.map((cat) => (
-                        <MenuItem key={cat.value} value={cat.value}>{cat.label}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    label="대여료 (시간당)"
-                    name="price"
-                    type="number"
-                    fullWidth
-                    required
-                    value={values.price}
+              {/* [수정 전: Grid 사용 시 너비 깨짐 발생] */}
+              {/* <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}> ... </Grid>
+                <Grid item xs={12} sm={6}> ... </Grid>
+            </Grid> */}
+
+              {/* [수정 후: Stack으로 변경하여 안정적인 5:5 비율 보장] */}
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <FormControl fullWidth required sx={{ flex: 1 }}>
+                  <InputLabel>카테고리</InputLabel>
+                  <Select
+                    name="category"
+                    value={values.category}
+                    label="카테고리"
                     onChange={handleChange}
-                    InputProps={{
-                      endAdornment: <InputAdornment position="end">원</InputAdornment>
-                    }}
-                  />
-                </Grid>
-              </Grid>
+                  >
+                    {CATEGORIES.map((cat) => (
+                      <MenuItem key={cat.value} value={cat.value}>{cat.label}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <TextField
+                  label="대여료 (시간당)"
+                  name="price"
+                  type="number"
+                  fullWidth
+                  required
+                  value={values.price}
+                  onChange={handleChange}
+                  sx={{ flex: 1 }} // 남은 공간을 똑같이 나눠 갖도록 설정
+                  InputProps={{
+                    endAdornment: <InputAdornment position="end">원</InputAdornment>
+                  }}
+                />
+              </Stack>
             </Stack>
 
             <Divider />
