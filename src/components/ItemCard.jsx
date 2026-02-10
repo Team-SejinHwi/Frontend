@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardMedia, CardContent, Typography, Box, Chip, Stack } from '@mui/material';
+import { Card, CardMedia, CardContent, Typography, Box, Chip, Stack, Divider } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../config';
 
@@ -27,7 +27,7 @@ export default function ItemCard({ item }) {
         backdropFilter: 'blur(2px)', // 미세한 블러 효과로 고급스러움 추가
       }}>
         <Typography variant="h6" sx={{
-          color: 'white', fontWeight: '800', 
+          color: 'white', fontWeight: '800',
           letterSpacing: '0.5px',
           textShadow: '0 2px 4px rgba(0,0,0,0.3)'
         }}>
@@ -49,7 +49,7 @@ export default function ItemCard({ item }) {
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', // 부드러운 애니메이션
         position: 'relative',
         overflow: 'hidden', // 라운딩된 모서리 밖으로 이미지가 안 나가게 함
-        '&:hover': { 
+        '&:hover': {
           transform: 'translateY(-8px)', // 위로 쑥 떠오르는 효과
           boxShadow: '0 12px 30px rgba(0,0,0,0.12)', // 호버 시 그림자 깊이감 증가
           '& .card-media': { transform: 'scale(1.05)' } // 이미지 살짝 확대 효과 추가
@@ -67,46 +67,49 @@ export default function ItemCard({ item }) {
           height="220" // 조금 더 시원하게 키움
           image={getImageUrl(item.itemImageUrl)}
           alt={item.title}
-          sx={{ 
+          sx={{
             objectFit: 'cover',
-            transition: 'transform 0.5s ease' 
+            transition: 'transform 0.5s ease'
           }}
         />
         {/* 카테고리 칩을 이미지 위에 띄우기 (선택 사항) */}
         {item.category && (
-          <Chip 
-            label={item.category} 
-            size="small" 
-            sx={{ 
+          <Chip
+            label={item.category}
+            size="small"
+            sx={{
               position: 'absolute', top: 12, left: 12,
-              bgcolor: 'rgba(255,255,255,0.9)', 
+              bgcolor: 'rgba(255,255,255,0.9)',
               fontWeight: 'bold', fontSize: '0.65rem', height: 22,
               backdropFilter: 'blur(4px)',
               zIndex: 1
-            }} 
+            }}
           />
         )}
       </Box>
 
       {/* 3. 정보 섹션 */}
       <CardContent sx={{ p: 2.5 }}>
-        <Typography 
-          gutterBottom 
-          variant="subtitle1" 
-          component="div" 
-          noWrap 
+        <Typography
+          gutterBottom
+          variant="subtitle1"
+          component="div"
+          noWrap
           sx={{ fontWeight: '700', mb: 0.5, color: '#333' }}
         >
           {item.title}
         </Typography>
-        
-        <Typography variant="h6" color="primary" sx={{ fontWeight: '800', display: 'flex', alignItems: 'baseline' }}>
+
+        <Divider sx={{ my: 1.5, opacity: 0.3 }} />
+
+        <Typography variant="h5" color="primary.main" sx={{ fontWeight: '900', display: 'flex', alignItems: 'baseline', mb: 2 }}>
+
           {item.price?.toLocaleString()}원
-          <Typography variant="caption" sx={{ ml: 0.5, color: '#999', fontWeight: '500' }}>/ 시간</Typography>
+          <Typography variant="caption" sx={{ ml: 0.5, color: 'text.secondary', fontWeight: '600' }}>/ 시간</Typography>
         </Typography>
 
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 2 }}>
-          <Typography variant="caption" sx={{ color: '#777', display: 'flex', alignItems: 'center' }}>
+          <Typography variant="caption" sx={{ color: '#999', display: 'flex', alignItems: 'center' }}>
             📍 {item.location?.split(' ').slice(0, 2).join(' ') || '위치 정보 없음'} {/* 위치 너무 길면 앞부분만 / 위치가 없을 경우 대비 */}
           </Typography>
           <Typography variant="caption" sx={{ color: '#bbb' }}>
