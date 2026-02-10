@@ -33,6 +33,9 @@ import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import PetsIcon from '@mui/icons-material/Pets';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import SecurityIcon from '@mui/icons-material/Security';
+import HandshakeIcon from '@mui/icons-material/Handshake';
+import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt';
 
 // 설정 및 데이터 import
 import { CATEGORIES } from '../constants/categories';
@@ -286,7 +289,7 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#f9f9f9' }}>
+    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#f9f9f9', overflowX: 'hidden' }}>
 
       {/* --- 네비게이션 바 --- */}
       <AppBar position="static" color="default" elevation={1} sx={{ bgcolor: 'white' }}>
@@ -313,23 +316,53 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
 
       {/* --- 메인 배너 --- */}
       <Box sx={{
-        position: 'relative', width: '100%', height: '250px',
-        backgroundImage: `url(${MAIN_IMAGE_URL})`, backgroundSize: 'cover', backgroundPosition: 'center',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        '&::before': { content: '""', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)' }
+        position: 'relative',
+        width: '100vw', // 100% 대신 100vw를 사용하면 화면 끝까지 참.
+        left: '50%',
+        right: '50%',
+        marginLeft: '-50vw',
+        marginRight: '-50vw',
+        height: { xs: '350px', md: '480px' }, // 높이를 더 키워서 몰입감을 줌.
+        backgroundImage: `url(${MAIN_IMAGE_URL})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        // 그라데이션 오버레이 추가 (글자가 훨씬 잘 보임)
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 100%)',
+          zIndex: 1
+        }
       }}>
-        <Container maxWidth="md" sx={{ position: 'relative', zIndex: 1, textAlign: 'center', color: 'white' }}>
-          <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
+        <Container maxWidth="md" sx={{ position: 'relative', zIndex: 2, textAlign: 'center', color: 'white' }}>
+          <Typography variant="h2"
+            sx={{
+              fontWeight: 900, // 더 굵게 (Extra Bold)
+              mb: 2,
+              fontSize: { xs: '2.5rem', md: '3rem' }, // 크기 대폭 상향
+              letterSpacing: '-1px',
+              textShadow: '0 2px 10px rgba(0,0,0,0.3)'
+            }}>
             모든 것을 빌려쓰는 세상
           </Typography>
-          <Typography variant="subtitle1" sx={{ opacity: 0.9 }}>
+          <Typography variant="h5" sx={{
+            opacity: 0.9,
+            fontWeight: 400,
+            mt: 3, // 서브 텍스트와 간격 벌림 (여백의 미)
+            letterSpacing: '0.5px',
+            fontSize: { xs: '1.1rem', md: '1.5rem' }
+          }}>
             필요한 물건, 사지 말고 Re:Borrow 하세요.
           </Typography>
         </Container>
       </Box>
 
       {/* --- 🔍 컨트롤 타워 (검색, 필터, 뷰 모드) --- */}
-      <Container sx={{ mt: -4, mb: 4, position: 'relative', zIndex: 2 }}>
+      <Container sx={{ mt: -11, mb: 4, position: 'relative', zIndex: 2 }}>
         <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
           <Stack spacing={2}>
 
@@ -497,11 +530,13 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
 
       {/* --- 📦 콘텐츠 영역 (리스트 or 지도) --- */}
       <Container sx={{ py: 2, pb: 10, flex: 1 }}>
-        <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 3 }}>
-          {category ? `📂 ${CATEGORIES.find(c => c.value === category)?.label}` : '🔥 전체 상품'}
-          {keyword && ` / 검색어: "${keyword}"`}
-          {locationFilter.active && <Chip label="📍 내 주변 5km" color="success" size="small" sx={{ ml: 1 }} />}
-        </Typography>
+        <Box sx={{ mt: 0, mb: 4.5 }}>
+          <Typography variant="h4" sx={{ fontWeight: '900', color: '#1a1a1a' }}>
+            {category ? `📂 ${CATEGORIES.find(c => c.value === category)?.label}` : '🔥 전체 상품'}
+            {keyword && ` / 검색어: "${keyword}"`}
+            {locationFilter.active && <Chip label="📍 내 주변 5km" color="success" size="small" sx={{ ml: 2, verticalAlign: 'middle' }} />}
+          </Typography>
+        </Box>
 
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>
@@ -515,8 +550,34 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
           viewMode === 'LIST' ? (
             // [A] 리스트 뷰 (기존 Grid)
             <Grid container spacing={3}>
-              {items.map((item) => (
-                <Grid item key={item.itemId || item.id} xs={12} sm={6} md={3}>
+
+              {items.map((item, index) => ( // index 인자를 추가.
+                <Grid
+                  item
+                  key={item.itemId || item.id}
+                  xs={12} sm={6} md={3}
+                  sx={{
+                    // 1. 애니메이션 설정: 이름, 시간, 가속도, 마지막 상태 유지(forwards)
+                    animation: 'fadeInUp 0.6s ease-out forwards',
+                    opacity: 0, // 처음에는 투명하게 설정
+
+                    // 2. sx 내부에 직접 @keyframes 정의
+                    '@keyframes fadeInUp': {
+                      from: {
+                        opacity: 0,
+                        transform: 'translateY(20px)', // 아래에서 위로 20px 올라옴
+                      },
+                      to: {
+                        opacity: 1,
+                        transform: 'translateY(0)',
+                      },
+                    },
+
+                    // 3. 인덱스를 활용한 지연 시간 계산 (0.1초씩 차례대로 등장)
+                    // 처음 8개 정도까지만 지연을 주고 그 뒤는 바로 나오게 하려면 Math.min(index, 8)을 쓸 수도 있다.
+                    animationDelay: `${index * 0.1}s`,
+                  }}
+                >
                   <ItemCard item={item} />
                 </Grid>
               ))}
@@ -573,6 +634,93 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
           )
         )}
       </Container>
+
+      {/* --- ✨ 호스트 모집 배너 (CTA) --- */}
+      <Box sx={{
+        py: 10,
+        bgcolor: 'primary.main', // 브랜드 컬러 배경
+        color: 'white',
+        textAlign: 'center',
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        {/* 배경 장식용 원 (디자인 디테일) */}
+        <Box sx={{ position: 'absolute', top: -50, left: -50, width: 200, height: 200, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.1)' }} />
+        <Box sx={{ position: 'absolute', bottom: -30, right: -30, width: 150, height: 150, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.1)' }} />
+
+        <Container maxWidth="md" sx={{ position: 'relative', zIndex: 1 }}>
+          <Typography variant="h3" sx={{ fontWeight: '900', mb: 2 }}>
+            집에 잠들어 있는 물건이 있나요?
+          </Typography>
+          <Typography variant="h6" sx={{ opacity: 0.9, mb: 5, fontWeight: '400' }}>
+            Re:Borrow에서 이웃에게 빌려주고 부수입을 올려보세요.
+          </Typography>
+          <Button
+            variant="contained"
+            size="large"
+            sx={{
+              bgcolor: 'white',
+              color: 'primary.main',
+              fontWeight: 'bold',
+              px: 5, py: 1.5,
+              fontSize: '1.2rem',
+              '&:hover': { bgcolor: '#f0f0f0' }
+            }}
+            onClick={() => {
+              if (isLoggedIn) navigate('/products/new');
+              else navigate('/login');
+            }}
+          >
+            물건 등록하러 가기 🚀
+          </Button>
+        </Container>
+      </Box>
+
+
+      {/* --- ✨ 서비스 소개 (Trust Section) --- */}
+      <Box sx={{ py: 8, bgcolor: 'white', borderTop: '1px solid #eee' }}>
+        <Container maxWidth="lg">
+          <Typography variant="h4" sx={{ fontWeight: '900', textAlign: 'center', mb: 6 }}>
+            왜 Re:Borrow 인가요?
+          </Typography>
+          <Grid container spacing={4}>
+            {[
+              {
+                icon: <SecurityIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />,
+                title: '안전한 거래',
+                desc: '본인 인증된 사용자만 거래할 수 있어\n안심하고 물건을 빌려줄 수 있습니다.'
+              },
+              {
+                icon: <HandshakeIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />,
+                title: '합리적인 소비',
+                desc: '필요할 때만 빌려 쓰고,\n잠자는 물건으로 수익을 창출하세요.'
+              },
+              {
+                icon: <SentimentSatisfiedAltIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />,
+                title: '쉬운 이웃 거래',
+                desc: '내 주변 5km 이내의 이웃과\n직거래로 배송비 없이 이용하세요.'
+              }
+            ].map((feature, idx) => (
+              <Grid item xs={12} md={4} key={idx} sx={{ textAlign: 'center' }}>
+                <Box sx={{
+                  p: 4,
+                  height: '100%',
+                  borderRadius: 4,
+                  bgcolor: '#f9f9f9',
+                  transition: 'transform 0.3s',
+                  '&:hover': { transform: 'translateY(-10px)', boxShadow: '0 10px 20px rgba(0,0,0,0.05)' }
+                }}>
+                  {feature.icon}
+                  <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2 }}>{feature.title}</Typography>
+                  <Typography variant="body1" color="text.secondary" sx={{ whiteSpace: 'pre-line', lineHeight: 1.6 }}>
+                    {feature.desc}
+                  </Typography>
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
+        </Container>
+      </Box>
 
       {/* --- 푸터 --- */}
       <Box component="footer" sx={{ py: 3, mt: 'auto', bgcolor: '#f1f1f1', textAlign: 'center' }}>

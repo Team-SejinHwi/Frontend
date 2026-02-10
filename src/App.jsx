@@ -1,5 +1,5 @@
 import React, { useState } from 'react'; // [수정] useState 훅을 불러옵니다.
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, } from 'react-router-dom';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -21,7 +21,7 @@ function App() {
     <BrowserRouter>
       {/* 개발 편의를 위한 상단 링크 (나중에 삭제 가능) */}
       {/* [디버깅용] 현재 상태를 눈으로 확인하기 위함 */}
-      <li>현재상태: {isLoggedIn ? "로그인 됨(ON)" : "로그인 안됨(OFF)"}</li>
+      {/* <li>현재상태: {isLoggedIn ? "로그인 됨(ON)" : "로그인 안됨(OFF)"}</li> */}
 
 
       <Routes>

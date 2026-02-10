@@ -434,7 +434,10 @@ export default function ItemDetail() {
                 </Map>
                 <Box
                   sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: 'pointer', zIndex: 10 }}
-                  onClick={() => window.open(`https://map.kakao.com/link/to/${item.title},${item.tradeLatitude},${item.tradeLongitude}`, '_blank')}
+                  // onClick={() => window.open(`https://map.kakao.com/link/to/${item.title},${item.tradeLatitude},${item.tradeLongitude}`, '_blank')}
+                  // 만약 item.title에 특수문자나 공백이 포함되어 있으면 URL이 깨질 위험이 있다.
+                  //encodeURIComponent()를 사용하여 상품명을 안전하게 인코딩 (2026.02.09 수정)
+                  onClick={() => window.open(`https://map.kakao.com/link/to/${encodeURIComponent(item.title)},${item.tradeLatitude},${item.tradeLongitude}`, '_blank')}
                   title="카카오맵에서 크게 보기"
                 />
               </Box>
@@ -491,7 +494,7 @@ export default function ItemDetail() {
         {/* ===========================================================
             [RIGHT COLUMN] 스티키 액션 카드 (가격 + 예약버튼) - md={4}
             =========================================================== */}
-       <Grid item xs={12} sm={5} md={4}>
+        <Grid item xs={12} sm={5} md={4}>
           <Box sx={{ position: 'sticky', top: 100 }}> {/* 스크롤 따라오게 설정 */}
             <Paper
               elevation={0}
@@ -504,11 +507,15 @@ export default function ItemDetail() {
               }}
             >
               {/* 1. 가격 정보 */}
-              <Typography variant="h4" color="primary" sx={{ fontWeight: '900', mb: 1, display: 'flex', alignItems: 'baseline' }}>
-                {item.price?.toLocaleString()}원
-                <Typography component="span" variant="body1" sx={{ ml: 1, color: '#666', fontWeight: '600' }}>
-                  / 시간
-                </Typography>
+              <Typography variant="h3" color="primary.main" sx={{
+                fontWeight: '900',
+                fontSize: { xs: '1.8rem', md: '2.2rem' }, // 길어질 경우를 대비해 크기를 살짝 조절
+                display: 'flex',
+                alignItems: 'baseline'
+              }}>
+                {item.price?.toLocaleString()}
+                <Typography component="span" variant="h5" sx={{ fontWeight: '800', ml: 0.5 }}>원</Typography>
+                <Typography component="span" variant="body1" sx={{ ml: 1, color: '#999', fontWeight: '600' }}>/ 시간</Typography>
               </Typography>
 
               <Divider sx={{ my: 3 }} />
