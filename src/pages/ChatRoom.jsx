@@ -144,10 +144,11 @@ const ChatRoom = () => {
     // [A] Mock 모드
     if (IS_MOCK_MODE) {
       const mockNow = dayjs().format('YYYY-MM-DD HH:mm:ss');
-      setMessages([...messages, { 
-        senderId: myId, 
+      setMessages([...messages, {
+        messageId: Date.now(),
+        senderId: myId,
         senderName: "나",
-        message: input, 
+        message: input,
         sendDate: mockNow,
         type: 'TALK'
       }]);
@@ -232,7 +233,7 @@ const ChatRoom = () => {
               )}
 
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start', maxWidth: '70%' }}>
-                
+
                 {/* 🏷️ 상대방 이름 표시 (v.02.05 명세 기반) */}
                 {!isMe && (
                   <Typography variant="caption" sx={{ ml: 1, mb: 0.5, color: '#555', fontWeight: 'bold' }}>

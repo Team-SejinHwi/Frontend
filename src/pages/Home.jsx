@@ -6,7 +6,7 @@ import { Map, MapMarker } from 'react-kakao-maps-sdk'; // 지도 라이브러리
 import {
   AppBar, Toolbar, Button, Typography, Box, Container, Stack, Paper,
   Grid, Fab, TextField, InputAdornment, Chip, ToggleButton, ToggleButtonGroup,
-  CircularProgress, IconButton
+  IconButton, Skeleton
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
@@ -91,6 +91,16 @@ const CATEGORY_ICONS = {
   PET: <PetsIcon />,
   ETC: <MoreHorizIcon />,
 };
+
+//  💓 Pulsing Badge (내 주변 찾기 강조) 2026.02.10
+const pulseKeyframes = {
+  '@keyframes pulse': {
+    '0%': { boxShadow: '0 0 0 0 rgba(46, 125, 50, 0.4)' },
+    '70%': { boxShadow: '0 0 0 20px rgba(46, 125, 50, 0)' },
+    '100%': { boxShadow: '0 0 0 0 rgba(46, 125, 50, 0)' }
+  }
+};
+
 
 export default function Home({ isLoggedIn, setIsLoggedIn }) {
   const navigate = useNavigate();
@@ -292,7 +302,20 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#f9f9f9', overflowX: 'hidden' }}>
 
       {/* --- 네비게이션 바 --- */}
-      <AppBar position="static" color="default" elevation={1} sx={{ bgcolor: 'white' }}>
+
+      {/* [✨ 수정 후: 글래스모피즘 적용]  2026.02.10 수정 */}
+      <AppBar
+        position="sticky" // 스크롤 해도 상단에 붙어있게 변경
+        elevation={0}     // 그림자 제거 (깔끔하게)
+        sx={{
+          top: 0,
+          zIndex: 100, // 다른 요소보다 위에 오도록
+          // 핵심: 반투명 흰색 배경 + 블러 효과
+          bgcolor: 'rgba(255, 255, 255, 0.7)',
+          backdropFilter: 'blur(12px)',
+          borderBottom: '1px solid rgba(0,0,0,0.05)' // 아주 연한 경계선 추가
+        }}
+      >
         <Toolbar sx={{ justifyContent: 'space-between' }}>
           <Typography variant="h6" sx={{ fontWeight: 'bold', cursor: 'pointer', color: '#333' }} onClick={() => navigate('/')}>
             Re:Borrow
@@ -341,11 +364,13 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
         <Container maxWidth="md" sx={{ position: 'relative', zIndex: 2, textAlign: 'center', color: 'white' }}>
           <Typography variant="h2"
             sx={{
-              fontWeight: 900, // 더 굵게 (Extra Bold)
+              fontWeight: 900,
               mb: 2,
-              fontSize: { xs: '2.5rem', md: '3rem' }, // 크기 대폭 상향
+              color: '#ffffff', // 그라데이션 대신 단색 화이트
+              fontSize: { xs: '2.5rem', md: '3.5rem' },
               letterSpacing: '-1px',
-              textShadow: '0 2px 10px rgba(0,0,0,0.3)'
+              // 화이트일 때는 그림자가 있어야 글씨가 배경에서 튀어나와 보입니다.
+              textShadow: '2px 2px 20px rgba(0,0,0,0.5)'
             }}>
             모든 것을 빌려쓰는 세상
           </Typography>
@@ -362,7 +387,12 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
       </Box>
 
       {/* --- 🔍 컨트롤 타워 (검색, 필터, 뷰 모드) --- */}
-      <Container sx={{ mt: -11, mb: 4, position: 'relative', zIndex: 2 }}>
+      <Container sx={{
+        mt: { xs: -3, md: -11 },
+        mb: 4,
+        position: 'relative',
+        zIndex: 2
+      }}>
         <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
           <Stack spacing={2}>
 
@@ -386,7 +416,11 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
                 color={locationFilter.active ? "success" : "primary"}
                 onClick={handleNearMeClick}
                 startIcon={<MyLocationIcon />}
-                sx={{ minWidth: '140px', fontWeight: 'bold', whiteSpace: 'nowrap' }}
+                sx={{
+                  minWidth: '140px', fontWeight: 'bold', whiteSpace: 'nowrap', ...pulseKeyframes,
+                  animation: locationFilter.active ? 'pulse 1.5s infinite' : 'none',
+                  transition: 'all 0.3s ease'
+                }}
               >
                 {locationFilter.active ? "필터 해제" : "내 주변 찾기"}
               </Button>
@@ -538,8 +572,24 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
           </Typography>
         </Box>
 
+        {/* [✨ 수정 : 스켈레톤 로딩]  2026.02.10 */}
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>
+          <Grid container spacing={3}>
+            {/* 8개의 가짜 카드를 보여줌 */}
+            {Array.from(new Array(8)).map((_, index) => (
+              <Grid key={index} size={{ xs: 12, sm: 6, md: 3 }}>
+                <Box sx={{ borderRadius: 4, overflow: 'hidden' }}>
+                  {/* 이미지 영역 */}
+                  <Skeleton variant="rectangular" height={220} animation="wave" sx={{ borderRadius: 4 }} />
+                  {/* 텍스트 영역 */}
+                  <Box sx={{ pt: 2, px: 1 }}>
+                    <Skeleton width="60%" height={24} animation="wave" sx={{ mb: 1 }} />
+                    <Skeleton width="40%" height={32} animation="wave" />
+                  </Box>
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
         ) : items.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 10 }}>
             <Typography variant="h6" color="text.secondary">조건에 맞는 상품이 없습니다.</Typography>
@@ -549,13 +599,12 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
           // 뷰 모드에 따라 분기 처리
           viewMode === 'LIST' ? (
             // [A] 리스트 뷰 (기존 Grid)
-            <Grid container spacing={3}>
+            <Grid container spacing={{ xs: 2, md: 4 }}>
 
               {items.map((item, index) => ( // index 인자를 추가.
                 <Grid
-                  item
                   key={item.itemId || item.id}
-                  xs={12} sm={6} md={3}
+                  size={{ xs: 12, sm: 6, md: 3 }}
                   sx={{
                     // 1. 애니메이션 설정: 이름, 시간, 가속도, 마지막 상태 유지(forwards)
                     animation: 'fadeInUp 0.6s ease-out forwards',
@@ -638,33 +687,37 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
       {/* --- ✨ 호스트 모집 배너 (CTA) --- */}
       <Box sx={{
         py: 10,
-        bgcolor: 'primary.main', // 브랜드 컬러 배경
-        color: 'white',
+        //  로그인 페이지의 하늘색 그라데이션 적용
+        background: 'linear-gradient(to right, #a1c4fd, #c2e9fb)',
+        //  밝은 배경에 맞춰 글자색을 진한 회색으로 변경 (가독성 확보)
+        color: '#333',
         textAlign: 'center',
         position: 'relative',
         overflow: 'hidden'
       }}>
         {/* 배경 장식용 원 (디자인 디테일) */}
-        <Box sx={{ position: 'absolute', top: -50, left: -50, width: 200, height: 200, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.1)' }} />
-        <Box sx={{ position: 'absolute', bottom: -30, right: -30, width: 150, height: 150, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.1)' }} />
+        <Box sx={{ position: 'absolute', top: -50, left: -50, width: 200, height: 200, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.4)' }} />
+        <Box sx={{ position: 'absolute', bottom: -30, right: -30, width: 150, height: 150, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.4)' }} />
 
         <Container maxWidth="md" sx={{ position: 'relative', zIndex: 1 }}>
           <Typography variant="h3" sx={{ fontWeight: '900', mb: 2 }}>
             집에 잠들어 있는 물건이 있나요?
           </Typography>
           <Typography variant="h6" sx={{ opacity: 0.9, mb: 5, fontWeight: '400' }}>
-            Re:Borrow에서 이웃에게 빌려주고 부수입을 올려보세요.
+            Re:Borrow에서 근처 사람에게 빌려주고 부수입을 올려보세요.
           </Typography>
           <Button
             variant="contained"
             size="large"
             sx={{
-              bgcolor: 'white',
-              color: 'primary.main',
+              //  버튼은 배경과 대비되도록 진한 색상으로 변경
+              bgcolor: 'primary.main',
+              color: 'white',
               fontWeight: 'bold',
               px: 5, py: 1.5,
               fontSize: '1.2rem',
-              '&:hover': { bgcolor: '#f0f0f0' }
+              boxShadow: '0 4px 15px rgba(25, 118, 210, 0.3)',
+              '&:hover': { bgcolor: 'primary.dark' }
             }}
             onClick={() => {
               if (isLoggedIn) navigate('/products/new');
@@ -674,13 +727,31 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
             물건 등록하러 가기 🚀
           </Button>
         </Container>
+
+        {/* 섹션 경계 허물기: "Wave Divider" */}
+        <Box sx={{
+          position: 'absolute', bottom: -1, left: 0, width: '100%',
+          overflow: 'hidden', lineHeight: 0, transform: 'rotate(180deg)', zIndex: 0
+        }}>
+          <svg viewBox="0 0 1200 120" preserveAspectRatio="none" style={{ width: '100%', height: '60px', display: 'block' }}>
+            <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z"
+              fill="#ffffff" />
+          </svg>
+        </Box>
       </Box>
 
 
       {/* --- ✨ 서비스 소개 (Trust Section) --- */}
       <Box sx={{ py: 8, bgcolor: 'white', borderTop: '1px solid #eee' }}>
         <Container maxWidth="lg">
-          <Typography variant="h4" sx={{ fontWeight: '900', textAlign: 'center', mb: 6 }}>
+          <Typography variant="h4" sx={{
+            fontWeight: '900',
+            textAlign: 'center',
+            mb: 6,
+            // 👇 그라데이션 대신 깔끔하고 깊이 있는 차콜 컬러로 변경
+            color: '#1a1a1a',
+            letterSpacing: '-0.5px'
+          }}>
             왜 Re:Borrow 인가요?
           </Typography>
           <Grid container spacing={4}>
@@ -701,7 +772,7 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
                 desc: '내 주변 5km 이내의 이웃과\n직거래로 배송비 없이 이용하세요.'
               }
             ].map((feature, idx) => (
-              <Grid item xs={12} md={4} key={idx} sx={{ textAlign: 'center' }}>
+              <Grid key={idx} size={{ xs: 12, md: 4 }} sx={{ textAlign: 'center' }}>
                 <Box sx={{
                   p: 4,
                   height: '100%',

@@ -182,7 +182,7 @@ export default function SentRequests() {
                                     <Grid container spacing={2} alignItems="center">
 
                                         {/* 좌측: 대여 정보 요약 */}
-                                        <Grid item xs={12} sm={8}>
+                                        <Grid size={{ xs: 12, sm: 8 }}>
                                             <Typography variant="subtitle1" fontWeight="bold">
                                                 {rental.itemTitle}
                                             </Typography>
@@ -205,7 +205,7 @@ export default function SentRequests() {
                                         </Grid>
 
                                         {/* 우측: 상태 뱃지 및 액션 버튼 */}
-                                        <Grid item xs={12} sm={4} sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
+                                        <Grid size={{ xs: 12, sm: 4 }} sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
                                             <Chip
                                                 label={statusStyle.label}
                                                 color={statusStyle.color}
