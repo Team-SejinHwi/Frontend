@@ -334,7 +334,7 @@ export default function ItemEdit() {
               />
 
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <FormControl fullWidth required>
                     <InputLabel>카테고리</InputLabel>
                     <Select name="category" value={values.category} label="카테고리" onChange={handleChange}>
@@ -344,7 +344,7 @@ export default function ItemEdit() {
                     </Select>
                   </FormControl>
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <TextField
                     label="대여료 (시간당)"
                     name="price"

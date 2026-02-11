@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     Container, Typography, Box, Grid, Paper, Avatar, CircularProgress, Button,
     Dialog, DialogTitle, DialogContent, DialogActions, TextField, Stack,
-    Chip, Tabs, Tab, Fade, List, ListItem, ListItemAvatar, ListItemText, Divider
+    Chip, Tabs, Tab, Fade, List, ListItem, ListItemAvatar, ListItemText, Divider, ListItemButton
 } from '@mui/material';
 
 // 아이콘 Import
@@ -61,15 +61,17 @@ function ChatList() {
         <List sx={{ bgcolor: 'background.paper', borderRadius: 2 }}>
             {rooms.map((room) => (
                 <React.Fragment key={room.roomId}>
-                    <ListItem button onClick={() => navigate(`/chat/${room.roomId}`)}>
-                        <ListItemAvatar><Avatar><ChatIcon /></Avatar></ListItemAvatar>
-                        <ListItemText 
-                            primary={`채팅방 #${room.roomId}`} 
-                            secondary={room.lastMessage || "대화 내용이 없습니다."} 
-                        />
-                        <Typography variant="caption" color="text.secondary">
-                            {room.sendDate} {/* 명세서 3-2: 포맷팅된 문자열 적용 */}
-                        </Typography>
+                    <ListItem disablePadding>
+                        <ListItemButton onClick={() => navigate(`/chat/${room.roomId}`)}>
+                            <ListItemAvatar><Avatar><ChatIcon /></Avatar></ListItemAvatar>
+                            <ListItemText
+                                primary={`채팅방 #${room.roomId}`}
+                                secondary={room.lastMessage || "대화 내용이 없습니다."}
+                            />
+                            <Typography variant="caption" color="text.secondary">
+                                {room.sendDate}
+                            </Typography>
+                        </ListItemButton>
                     </ListItem>
                     <Divider variant="inset" component="li" />
                 </React.Fragment>

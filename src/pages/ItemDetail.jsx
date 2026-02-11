@@ -143,6 +143,7 @@ export default function ItemDetail() {
       const response = await fetch(`${API_BASE_URL}/api/items/${id}`, {
         method: 'DELETE',
         headers: {
+
           'Authorization': `Bearer ${token}`,
           ...TUNNEL_HEADERS,
         },
@@ -259,25 +260,42 @@ export default function ItemDetail() {
     const alreadyRequested = item.isRequested; // [NEW] 이미 신청한 내역이 있는지 확인
 
     return (
-      <Stack direction="row" spacing={2} sx={{ width: '100%', mt: 2 }}>
+      //  direction을 'column'으로 변경하여 세로 배치
+      <Stack spacing={2} sx={{ width: '100%', mt: 2 }}>
+
+        {/* 문의하기 버튼 */}
         <Button
           variant="outlined"
           color="primary"
           startIcon={<ChatIcon />}
           onClick={handleChatStart}
-          sx={{ flex: 1, py: 1.5, fontWeight: 'bold', borderWidth: 2, borderRadius: 2 }}
+          fullWidth
+          sx={{
+            py: 1.5,
+            fontWeight: 'bold',
+            borderWidth: 2,
+            borderRadius: 2,
+            whiteSpace: 'nowrap',
+          }}
         >
           문의하기
         </Button>
 
-        {/* 대여 가능하면서, 아직 신청하지 않은 경우에만 버튼 활성화 */}
+        {/* 3. 대여신청/불가 버튼: flex 제거하고 fullWidth 적용 */}
         {isAvailable && !alreadyRequested ? (
           <Button
             variant="contained"
             color="primary"
             startIcon={<EventAvailableIcon />}
             onClick={handleOpenModal}
-            sx={{ flex: 2, py: 1.5, fontWeight: 'bold', boxShadow: 3, borderRadius: 2 }}
+            fullWidth // 가로 꽉 채우기
+            sx={{
+              py: 1.5,
+              fontWeight: 'bold',
+              boxShadow: 3,
+              borderRadius: 2,
+              whiteSpace: 'nowrap', // 한 줄 유지
+            }}
           >
             대여 신청
           </Button>
@@ -287,7 +305,15 @@ export default function ItemDetail() {
             color="inherit"
             disabled
             startIcon={<BlockIcon />}
-            sx={{ flex: 2, py: 1.5, fontWeight: 'bold', bgcolor: '#ccc', color: '#666', borderRadius: 2 }}
+            fullWidth // 가로 꽉 채우기
+            sx={{
+              py: 1.5,
+              fontWeight: 'bold',
+              bgcolor: '#ccc',
+              color: '#666',
+              borderRadius: 2,
+              whiteSpace: 'nowrap', // 한 줄 유지
+            }}
           >
             {/* 상태 메시지 분기 처리 */}
             {alreadyRequested ? '이미 신청함' : (item.itemStatus === 'RENTED' ? '대여중 (신청불가)' : '거래 완료')}
@@ -320,12 +346,18 @@ export default function ItemDetail() {
         목록으로 돌아가기
       </Button>
 
-      <Grid container spacing={4}>
+      <Grid container spacing={12} sx={{
+        justifyContent: 'center',
+        // 화면이 큰 데스크탑(md 이상)에서만 왼쪽 여백을 주어 오른쪽으로 밀기
+        ml: { md: 14, xs: 0 },
+        // 전체 너비가 넘치지 않도록 조정
+        width: 'auto'
+      }}>
 
         {/* ===========================================================
             [LEFT COLUMN] 콘텐츠 영역 (사진, 설명, 지도, 후기) - md={8}
             =========================================================== */}
-        <Grid item xs={12} sm={7} md={8}>
+        <Grid size={{ xs: 12, sm: 7, md: 7 }}>
 
           {/* A. 상품 이미지 */}
           <Box sx={{
@@ -355,20 +387,28 @@ export default function ItemDetail() {
               alt={item.title}
               sx={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
             />
+            {/* ✨  카테고리 칩을 사진 위에 오버레이  2026.02.10 */}
+            {item.category && (
+              <Chip
+                label={item.categoryName || item.category}
+                size="small"
+                sx={{
+                  position: 'absolute', // 사진 위에 둥둥 띄우기
+                  top: 20,              // 위에서 20px 간격 (왼쪽 상단 배치)
+                  left: 20,             // 왼쪽에서 20px 간격
+                  zIndex: 20,           // '대여중' 어두운 막보다 더 위에 보이도록 높게 설정
+                  bgcolor: 'white',     // 배경을 흰색으로 해서 사진 위에서도 잘 보이게
+                  color: 'primary.main',// 글씨는 파란색
+                  fontWeight: '800',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.2)' // 그림자 추가해서 입체감 주기
+                }}
+              />
+            )}
           </Box>
 
           {/* B. 상품 헤더 및 판매자 정보 */}
           <Box sx={{ mb: 5 }}>
             <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
-              {item.category && (
-                <Chip
-                  label={item.categoryName || item.category}
-                  color="primary"
-                  variant="outlined"
-                  size="small"
-                  sx={{ fontWeight: '800' }}
-                />
-              )}
               <Typography variant="caption" sx={{ color: '#bbb', fontWeight: '500' }}>
                 {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ""} 등록
               </Typography>
@@ -470,14 +510,22 @@ export default function ItemDetail() {
                       <ListItemText
                         primary={
                           <Box display="flex" justifyContent="space-between" alignItems="center">
-                            <Typography variant="subtitle1" fontWeight="800">{review.reviewerName || "익명 사용자"}</Typography>
-                            <Typography variant="caption" color="text.secondary">{review.createdAt ? new Date(review.createdAt).toLocaleDateString() : ""}</Typography>
+                            <Typography variant="subtitle1" fontWeight="800">
+                              {review.reviewerName || "익명 사용자"}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {review.createdAt ? new Date(review.createdAt).toLocaleDateString() : ""}
+                            </Typography>
                           </Box>
                         }
+                        //   수정 사항: secondary의 기본 p태그를 div로 변경 (2026.02.10)
+                        secondaryTypographyProps={{ component: 'div' }}
                         secondary={
                           <Box mt={1}>
                             <Rating value={review.rating} readOnly size="small" />
-                            <Typography variant="body1" sx={{ mt: 1, color: '#333', lineHeight: 1.6 }}>{review.content}</Typography>
+                            <Typography variant="body1" sx={{ mt: 1, color: '#333', lineHeight: 1.6 }}>
+                              {review.content}
+                            </Typography>
                           </Box>
                         }
                       />
@@ -494,7 +542,7 @@ export default function ItemDetail() {
         {/* ===========================================================
             [RIGHT COLUMN] 스티키 액션 카드 (가격 + 예약버튼) - md={4}
             =========================================================== */}
-        <Grid item xs={12} sm={5} md={4}>
+        <Grid size={{ xs: 12, sm: 5, md: 4 }}>
           <Box sx={{ position: 'sticky', top: 100 }}> {/* 스크롤 따라오게 설정 */}
             <Paper
               elevation={0}

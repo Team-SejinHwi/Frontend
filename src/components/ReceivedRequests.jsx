@@ -224,7 +224,7 @@ export default function ReceivedRequests() {
                 <CardContent>
                   <Grid container spacing={2} alignItems="center">
                     {/* 상품 정보 영역 */}
-                    <Grid item xs={12} sm={8}>
+                    <Grid size={{ xs: 12, sm: 8 }}>
                       <Typography variant="subtitle1" fontWeight="bold">
                         {req.itemTitle}
                       </Typography>
@@ -241,7 +241,7 @@ export default function ReceivedRequests() {
                     </Grid>
 
                     {/* 상태 및 액션 버튼 영역 */}
-                    <Grid item xs={12} sm={4} sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
+                    <Grid size={{ xs: 12, sm: 4 }} sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
                       <Chip
                         label={statusStyle.label}
                         color={statusStyle.color}
