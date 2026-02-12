@@ -2,6 +2,7 @@
 
 export const CATEGORIES = [
   { label: '디지털/가전', value: 'DIGITAL' },
+  { label: '생활/주방', value: 'LIVING' },
   { label: '카메라/촬영장비', value: 'CAMERA' },
   { label: '캠핑/레저', value: 'CAMPING' },
   { label: '공구/산업용품', value: 'TOOL' },

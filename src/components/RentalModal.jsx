@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Dialog, DialogTitle, DialogContent, DialogActions, 
+import {
+  Dialog, DialogTitle, DialogContent, DialogActions,
   Button, Typography, Box, Chip, Stack, Divider, Paper, IconButton,
   InputAdornment
 } from '@mui/material';
@@ -20,7 +20,7 @@ import { koKR } from '@mui/x-date-pickers/locales';
 
 // ⏰ 날짜 유틸리티 (Day.js)
 import dayjs from 'dayjs';
-import 'dayjs/locale/ko'; 
+import 'dayjs/locale/ko';
 
 import { API_BASE_URL, IS_MOCK_MODE, TUNNEL_HEADERS } from '../config';
 
@@ -66,8 +66,8 @@ const RentalModal = ({ open, onClose, item, onRentalSuccess }) => {
   const getTextFieldProps = (value, setValue) => ({
     fullWidth: true,
     variant: 'outlined',
-    sx: { 
-      '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: 'white' } 
+    sx: {
+      '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: 'white' }
     },
     InputProps: {
       // 값이 있을 때만 'X' 버튼(endAdornment) 표시
@@ -100,10 +100,11 @@ const RentalModal = ({ open, onClose, item, onRentalSuccess }) => {
       return;
     }
 
+    // 🌟  날짜 포맷팅 (YYYY-MM-DDTHH:mm:ss) 
     const requestBody = {
-      itemId: item.itemId, 
-      startDate: startDateTime.format('YYYY-MM-DDTHH:mm:ss'), 
-      endDate: endDateTime.format('YYYY-MM-DDTHH:mm:ss'),     
+      itemId: item.itemId,
+      startDate: startDateTime.format('YYYY-MM-DDTHH:mm:ss'),
+      endDate: endDateTime.format('YYYY-MM-DDTHH:mm:ss'),
     };
 
     setLoading(true);
@@ -112,10 +113,10 @@ const RentalModal = ({ open, onClose, item, onRentalSuccess }) => {
       if (IS_MOCK_MODE) {
         console.log("📦 [Mock] 서버 전송 데이터:", requestBody);
         setTimeout(() => {
-            alert(`[Mock] 신청 완료!\n기간: ${startDateTime.format('MM/DD HH:mm')} ~ ${endDateTime.format('MM/DD HH:mm')}`);
-            onRentalSuccess(); // 🌟 부모 상태 업데이트 호출
-            onClose();
-            setLoading(false);
+          alert(`[Mock] 신청 완료!\n기간: ${startDateTime.format('MM/DD HH:mm')} ~ ${endDateTime.format('MM/DD HH:mm')}`);
+          onRentalSuccess(); // 🌟 부모 상태 업데이트 호출
+          onClose();
+          setLoading(false);
         }, 1000);
         return;
       }
@@ -134,7 +135,7 @@ const RentalModal = ({ open, onClose, item, onRentalSuccess }) => {
       if (response.ok) {
         alert("대여 신청이 성공적으로 완료되었습니다.");
         onRentalSuccess(); // 🌟 2. 성공 시 부모 컴포넌트의 isRequested를 true로 바꿈
-        onClose(); 
+        onClose();
       } else {
         const errorMsg = await response.text();
         alert(`신청 실패: ${errorMsg}`);
@@ -150,27 +151,27 @@ const RentalModal = ({ open, onClose, item, onRentalSuccess }) => {
   if (!item) return null;
 
   return (
-    <LocalizationProvider 
-      dateAdapter={AdapterDayjs} 
+    <LocalizationProvider
+      dateAdapter={AdapterDayjs}
       adapterLocale="ko"
       localeText={koKR.components.MuiLocalizationProvider.defaultProps.localeText}
     >
-      <Dialog 
-        open={open} 
-        onClose={onClose} 
-        fullWidth 
+      <Dialog
+        open={open}
+        onClose={onClose}
+        fullWidth
         maxWidth="sm"
         PaperProps={{ sx: { borderRadius: 4, bgcolor: '#f8f9fa' } }}
       >
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', bgcolor: 'primary.main', color: 'white', py: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
             <EventAvailableIcon /> 대여 일정 설정
           </Typography>
           <IconButton onClick={onClose} sx={{ color: 'white' }}><CloseIcon /></IconButton>
         </DialogTitle>
-        
+
         <DialogContent sx={{ p: 3 }}>
-          
+
           {/* 상품 정보 요약 */}
           <Paper elevation={0} sx={{ p: 2.5, mb: 4, bgcolor: 'white', borderRadius: 3, border: '1px solid #e0e0e0' }}>
             <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>{item.title}</Typography>
@@ -183,7 +184,7 @@ const RentalModal = ({ open, onClose, item, onRentalSuccess }) => {
           </Paper>
 
           <Stack spacing={3}>
-            
+
             {/* 1️⃣ 대여 시작 시간 */}
             <MobileDateTimePicker
               label="대여 시작 시간"
@@ -192,25 +193,25 @@ const RentalModal = ({ open, onClose, item, onRentalSuccess }) => {
               minDateTime={dayjs()}
               minutesStep={1}
               // 🚨 [수정됨] 함수형 호출 대신 객체 직접 전달 방식으로 변경
-              slotProps={{ 
+              slotProps={{
                 textField: getTextFieldProps(startDateTime, setStartDateTime),
-                actionBar: { actions: ['cancel', 'today', 'accept'] } 
+                actionBar: { actions: ['cancel', 'today', 'accept'] }
               }}
             />
 
             {/* 2️⃣ 간편 시간 추가 (Chips) */}
             <Box>
-                <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, fontWeight: 'bold', color: 'text.primary' }}>
-                    <AccessTimeFilledIcon color="primary" fontSize="small" /> 간편 시간 추가 (누적)
-                </Typography>
-                <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 1 }}>
-                    <Chip label="+1시간" onClick={() => handleQuickDuration(1, 'hour')} color="primary" sx={{ borderRadius: 2, fontWeight: 'bold' }} clickable />
-                    <Chip label="+4시간" onClick={() => handleQuickDuration(4, 'hour')} color="primary" sx={{ borderRadius: 2, fontWeight: 'bold' }} clickable />
-                    <Chip label="+1일" onClick={() => handleQuickDuration(1, 'day')} color="secondary" sx={{ borderRadius: 2, fontWeight: 'bold' }} clickable />
-                    <Chip label="+2일" onClick={() => handleQuickDuration(2, 'day')} color="secondary" sx={{ borderRadius: 2, fontWeight: 'bold' }} clickable />
-                </Stack>
+              <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, fontWeight: 'bold', color: 'text.primary' }}>
+                <AccessTimeFilledIcon color="primary" fontSize="small" /> 간편 시간 추가 (누적)
+              </Typography>
+              <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 1 }}>
+                <Chip label="+1시간" onClick={() => handleQuickDuration(1, 'hour')} color="primary" sx={{ borderRadius: 2, fontWeight: 'bold' }} clickable />
+                <Chip label="+4시간" onClick={() => handleQuickDuration(4, 'hour')} color="primary" sx={{ borderRadius: 2, fontWeight: 'bold' }} clickable />
+                <Chip label="+1일" onClick={() => handleQuickDuration(1, 'day')} color="secondary" sx={{ borderRadius: 2, fontWeight: 'bold' }} clickable />
+                <Chip label="+2일" onClick={() => handleQuickDuration(2, 'day')} color="secondary" sx={{ borderRadius: 2, fontWeight: 'bold' }} clickable />
+              </Stack>
             </Box>
-            
+
             {/* 3️⃣ 반납 예정 시간 */}
             <MobileDateTimePicker
               label="반납 예정 시간"
@@ -220,9 +221,9 @@ const RentalModal = ({ open, onClose, item, onRentalSuccess }) => {
               minutesStep={1}
               slotProps={{
                 textField: {
-                   ...getTextFieldProps(endDateTime, setEndDateTime),
-                   error: startDateTime && endDateTime && startDateTime >= endDateTime,
-                   helperText: startDateTime && endDateTime && startDateTime >= endDateTime ? "종료 시간이 시작 시간보다 빨라요!" : ""
+                  ...getTextFieldProps(endDateTime, setEndDateTime),
+                  error: startDateTime && endDateTime && startDateTime >= endDateTime,
+                  helperText: startDateTime && endDateTime && startDateTime >= endDateTime ? "종료 시간이 시작 시간보다 빨라요!" : ""
                 },
                 actionBar: { actions: ['cancel', 'today', 'accept'] }
               }}
@@ -238,7 +239,7 @@ const RentalModal = ({ open, onClose, item, onRentalSuccess }) => {
               </Stack>
               <Divider sx={{ my: 2, borderColor: 'rgba(144, 202, 249, 0.5)' }} />
               <Typography variant="body2" sx={{ fontWeight: 'bold', display: 'block', textAlign: 'right', color: '#1e88e5' }}>
-                 ⏱️ 총 이용 시간: {endDateTime.diff(startDateTime, 'hour', true).toFixed(2)}시간
+                ⏱️ 총 이용 시간: {endDateTime.diff(startDateTime, 'hour', true).toFixed(2)}시간
               </Typography>
             </Paper>
           )}
@@ -246,11 +247,11 @@ const RentalModal = ({ open, onClose, item, onRentalSuccess }) => {
 
         <DialogActions sx={{ p: 3, pt: 2, bgcolor: '#f8f9fa', borderTop: '1px solid #e0e0e0' }}>
           <Button onClick={onClose} color="inherit" size="large" sx={{ borderRadius: 2, px: 3 }}>취소</Button>
-          <Button 
-            onClick={handleSubmit} 
-            variant="contained" 
-            disabled={loading || totalPrice <= 0} 
-            size="large" 
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            disabled={loading || totalPrice <= 0}
+            size="large"
             sx={{ fontWeight: 'bold', px: 5, borderRadius: 2, boxShadow: 2 }}
           >
             신청하기

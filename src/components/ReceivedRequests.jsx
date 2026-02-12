@@ -10,21 +10,22 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import HelpIcon from '@mui/icons-material/Help';
-import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn'; // [NEW] 반납 아이콘
+import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn'; //  반납 아이콘
 import dayjs from 'dayjs';
 
 import { API_BASE_URL, IS_MOCK_MODE, TUNNEL_HEADERS } from '../config';
 import { mockReceivedRentals, mockItems } from '../mocks/mockData';
 
 // =================================================================
-// 0. 상태별 디자인 설정 (v.02.05 명세 반영)
+// 0. 상태별 디자인 설정 (v.02.11 명세 반영)
 // =================================================================
 const STATUS_CONFIG = {
   WAITING: { label: '승인 대기', color: 'warning', icon: <HelpIcon /> },
-  APPROVED: { label: '승인됨', color: 'success', icon: <CheckCircleIcon /> },
+  APPROVED: { label: '결제 대기중', color: 'success', icon: <CheckCircleIcon /> }, // 라벨 변경
+  PAID: { label: '인계 대기중', color: 'info', icon: <CheckCircleIcon /> },        // [NEW] 추가
   REJECTED: { label: '거절됨', color: 'error', icon: <CancelIcon /> },
-  RENTING: { label: '대여 중', color: 'primary', icon: null },          // [NEW] 현재 대여 진행 중
-  RETURNED: { label: '반납 완료', color: 'info', icon: null },           // [UPDATE] COMPLETED -> RETURNED
+  RENTING: { label: '대여 중', color: 'primary', icon: null },          //  현재 대여 진행 중
+  RETURNED: { label: '반납 완료', color: 'info', icon: null },
   CANCELED: { label: '취소됨', color: 'default', variant: 'outlined', icon: null },
 };
 
@@ -162,7 +163,42 @@ export default function ReceivedRequests() {
     }
   };
 
-  // [NEW] 반납 완료 확인 핸들러 (POST /api/rentals/{id}/return) - v.02.05 추가
+  // [NEW] [D]  대여 시작 (물품 전달 확인) 핸들러   (v.02.11 명세 반영)
+  const handleStartRental = async (rentalId) => {
+    if (!window.confirm("구매자에게 물건을 전달하셨나요?\n확인을 누르면 대여 시간이 시작됩니다.")) return;
+
+    if (IS_MOCK_MODE) {
+      alert("[Mock] 대여가 시작되었습니다.");
+
+      // 상태를 RENTING으로 변경
+      setRequests(prev => prev.map(r => r.rentalId === rentalId ? { ...r, status: 'RENTING' } : r));
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('accessToken');
+      // API: POST /api/rentals/{id}/start
+      const response = await fetch(`${API_BASE_URL}/api/rentals/${rentalId}/start`, {
+        method: 'POST', // 명세서에 따라 POST 사용
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          ...TUNNEL_HEADERS
+        }
+      });
+
+      if (response.ok) {
+        alert("대여가 시작되었습니다.");
+        fetchRequests(); // 목록 갱신
+      } else {
+        const err = await response.json();
+        alert(err.message || "처리 실패");
+      }
+    } catch (error) {
+      console.error("대여 시작 오류:", error);
+    }
+  };
+
+  // [E]  반납 완료 확인 핸들러 (POST /api/rentals/{id}/return) (- v.02.05 명세 반영)
   const handleReturnConfirm = async (rentalId) => {
     if (!window.confirm("물건을 돌려받으셨나요?\n반납 완료 처리를 하면 상품이 다시 '대여 가능' 상태로 변경됩니다.")) return;
 
@@ -272,7 +308,20 @@ export default function ReceivedRequests() {
                         </Stack>
                       )}
 
-                      {/* Case 2: 대여 중 상태일 때 -> [반납 확인] 버튼 (NEW) */}
+                      {/* [NEW] Case 2: 결제 완료 (PAID) -> [물품 전달(대여 시작)] 버튼 노출   (v.02.11 명세 반영)*/}
+                      {req.status === 'PAID' && (
+                        <Button
+                          variant="contained"
+                          color="success"
+                          size="small"
+                          onClick={() => handleStartRental(req.rentalId)}
+                          sx={{ fontWeight: 'bold' }}
+                        >
+                          물품 전달 (대여 시작)
+                        </Button>
+                      )}
+
+                      {/* Case 3: 대여 중 상태일 때 -> [반납 확인] 버튼  */}
                       {req.status === 'RENTING' && (
                         <Box>
                           <Button

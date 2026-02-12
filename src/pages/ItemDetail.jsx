@@ -93,7 +93,21 @@ export default function ItemDetail() {
         // 상품 조회 실패 시 에러 처리
         if (!itemRes.ok) throw new Error("상품 조회 실패");
         const itemData = await itemRes.json();
-        setItem(itemData.data || itemData);
+
+        // ▼ 에러 로그 메시지
+        console.group('🚨 데이터 디버깅 (서버 응답 확인)');
+        console.log('1. 서버에서 온 원본 데이터:', itemData);
+
+        // itemData 구조가 { data: {...} } 인지 그냥 {...} 인지 확인하고 변수에 담기
+        const realItem = itemData.data || itemData;
+
+        console.log('2. 화면에 쓸 최종 item 객체:', realItem);
+        console.log('👉 [핵심] isRequested 값:', realItem.isRequested);
+        console.log('👉 [핵심] itemStatus 값:', realItem.itemStatus);
+        console.groupEnd();
+        // 에러 로그 메시지 끝
+
+        setItem(realItem); // (기존 코드: setItem(itemData.data || itemData); 를 이걸로 대체)
 
         // 리뷰 데이터 처리
         if (reviewRes.ok) {
@@ -175,13 +189,14 @@ export default function ItemDetail() {
 
   // 채팅방 생성 및 이동
   const handleChatStart = async () => {
+    //  로그인 체크
     if (!isLoggedIn) {
       if (window.confirm("로그인이 필요한 서비스입니다.\n로그인 페이지로 이동하시겠습니까?")) {
         navigate('/login');
       }
       return;
     }
-
+    //  Mock 모드 체크
     if (IS_MOCK_MODE) {
       alert("[Mock] 채팅방 생성");
       navigate(`/chat/999`);
@@ -201,15 +216,24 @@ export default function ItemDetail() {
       });
 
       const result = await response.json();
+
       if (response.ok) {
+        // [방어 코드 추가] HTTP 통신은 성공(200)했지만, 비즈니스 로직이 실패한 경우 체크
+        if (result.success === false) {
+          alert(result.message || "채팅방 생성에 실패했습니다.");
+          return;
+        }
+        // 데이터에서 방 번호 추출 (API 명세: data.roomId)
         const realRoomId = (result.data && result.data.roomId) || result.roomId;
+
         if (realRoomId) {
           navigate(`/chat/${realRoomId}`);
         } else {
-          alert("채팅방 번호 없음");
+          alert("채팅방 번호가 없습니다. 관리자에게 문의하세요.");
         }
       } else {
-        alert(result.message || "채팅방 생성 실패");
+        // HTTP 에러 (400, 500 등)
+        alert(result.message || "채팅방 생성 실패 (서버 오류)");
       }
     } catch (error) {
       console.error("채팅방 에러:", error);
@@ -222,11 +246,11 @@ export default function ItemDetail() {
   };
 
   // =================================================================
-  // 5. 하단 버튼 렌더링 (주인 vs 구매자)
+  // 5. 하단 버튼 렌더링 (주인 vs 구매자) - [UI 로직 강화 v.2026.02.12]
   // =================================================================
-  // [수정] 버튼 스타일(borderRadius, boxShadow) 고도화 (2026.02.09)
+  //  버튼 스타일(borderRadius, boxShadow)
   const renderActionButtons = () => {
-    // 주인일 경우: 수정/삭제 버튼
+    // Case A: 주인(Owner)일 경우 -> 수정/삭제 버튼
 
     if (isOwner) {
       return (
@@ -255,15 +279,16 @@ export default function ItemDetail() {
       );
     }
 
-    // 구매자일 경우 (v.02.05 명세 반영)
+    //  Case B: 구매자(Renter)일 경우
+    // 상태 우선순위: 1. 이미 신청했는가? -> 2. 물건이 이용 가능한가? (v.02.05 명세 반영)
+    const alreadyRequested = item.isRequested; //  이미 신청한 내역이 있는지 확인
     const isAvailable = item.itemStatus === 'AVAILABLE';
-    const alreadyRequested = item.isRequested; // [NEW] 이미 신청한 내역이 있는지 확인
 
     return (
       //  direction을 'column'으로 변경하여 세로 배치
       <Stack spacing={2} sx={{ width: '100%', mt: 2 }}>
 
-        {/* 문의하기 버튼 */}
+        {/* 1. 문의하기 버튼 (항상 노출) */}
         <Button
           variant="outlined"
           color="primary"
@@ -281,42 +306,41 @@ export default function ItemDetail() {
           문의하기
         </Button>
 
-        {/* 3. 대여신청/불가 버튼: flex 제거하고 fullWidth 적용 */}
-        {isAvailable && !alreadyRequested ? (
+        {/* 2. 대여 신청 버튼 (상태에 따른 분기) */}
+        {alreadyRequested ? (
+          // Case B-1: 이미 신청한 경우 (버튼 비활성화)
+          <Button
+            variant="contained"
+            color="inherit"
+            disabled
+            startIcon={<EventAvailableIcon />}
+            fullWidth
+            sx={{ py: 1.5, fontWeight: 'bold', bgcolor: '#e0e0e0', color: '#888', borderRadius: 2 }}
+          >
+            이미 신청한 상품입니다
+          </Button>
+        ) : isAvailable ? (
+          // Case B-2: 신청 가능 (AVAILABLE)
           <Button
             variant="contained"
             color="primary"
             startIcon={<EventAvailableIcon />}
             onClick={handleOpenModal}
-            fullWidth // 가로 꽉 채우기
-            sx={{
-              py: 1.5,
-              fontWeight: 'bold',
-              boxShadow: 3,
-              borderRadius: 2,
-              whiteSpace: 'nowrap', // 한 줄 유지
-            }}
+            fullWidth
+            sx={{ py: 1.5, fontWeight: 'bold', boxShadow: 3, borderRadius: 2 }}
           >
-            대여 신청
+            대여 신청하기
           </Button>
         ) : (
+          // Case B-3: 다른 사람이 대여중 (RENTED 등)
           <Button
             variant="contained"
-            color="inherit"
             disabled
             startIcon={<BlockIcon />}
-            fullWidth // 가로 꽉 채우기
-            sx={{
-              py: 1.5,
-              fontWeight: 'bold',
-              bgcolor: '#ccc',
-              color: '#666',
-              borderRadius: 2,
-              whiteSpace: 'nowrap', // 한 줄 유지
-            }}
+            fullWidth
+            sx={{ py: 1.5, fontWeight: 'bold', bgcolor: '#ccc', color: '#666', borderRadius: 2 }}
           >
-            {/* 상태 메시지 분기 처리 */}
-            {alreadyRequested ? '이미 신청함' : (item.itemStatus === 'RENTED' ? '대여중 (신청불가)' : '거래 완료')}
+            {item.itemStatus === 'RENTED' ? '현재 대여중입니다' : '거래가 완료된 상품'}
           </Button>
         )}
       </Stack>
