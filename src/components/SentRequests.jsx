@@ -8,20 +8,21 @@ import dayjs from 'dayjs';
 
 // 아이콘
 import RateReviewIcon from '@mui/icons-material/RateReview'; // 리뷰 아이콘
-import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn'; // [NEW] 반납 아이콘
+import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn'; //  반납 아이콘
 
 import { API_BASE_URL, IS_MOCK_MODE, TUNNEL_HEADERS } from '../config';
 import { mockMyRentals, mockItems } from '../mocks/mockData';
 import ReviewModal from './ReviewModal';
 
 // =================================================================
-// 0. 상태별 뱃지 디자인 설정 (v.02.05 명세 반영)
+// 0. 상태별 뱃지 디자인 설정 (v.02.11 명세 반영)
 // =================================================================
 const STATUS_CONFIG = {
     WAITING: { label: '승인 대기중', color: 'warning', variant: 'outlined' },
-    APPROVED: { label: '예약 확정', color: 'success', variant: 'outlined' }, // 승인됨 -> 아직 대여 시작 전
-    RENTING: { label: '대여 중', color: 'primary', variant: 'filled' },      // [NEW] 현재 대여 중 (반납 필요)
-    RETURNED: { label: '반납 완료', color: 'default', variant: 'filled' },   // [NEW] 반납 완료 (리뷰 작성 가능)
+    APPROVED: { label: '결제 필요', color: 'success', variant: 'filled' }, //구매자는 승인된 건에 대해 결제를 해야 함.
+    PAID: { label: '인수 대기중', color: 'info', variant: 'outlined' },    // [NEW] 주인이 줄 때까지 대기
+    RENTING: { label: '대여 중', color: 'primary', variant: 'filled' },      //  현재 대여 중 (반납 필요)
+    RETURNED: { label: '반납 완료', color: 'default', variant: 'filled' },   //  반납 완료 (리뷰 작성 가능)
     REJECTED: { label: '거절됨', color: 'error', variant: 'filled' },
     CANCELED: { label: '취소함', color: 'default', variant: 'outlined' }
 };
@@ -79,7 +80,7 @@ export default function SentRequests() {
     // 3. 핸들러 (Event Handlers)
     // =================================================================
 
-    // 요청 취소 핸들러 (POST /api/rentals/{id}/cancel)
+    // [A] 요청 취소 핸들러 (POST /api/rentals/{id}/cancel)
     const handleCancel = async (rentalId) => {
         if (!window.confirm("정말 이 대여 요청을 취소하시겠습니까?")) return;
 
@@ -111,7 +112,48 @@ export default function SentRequests() {
         }
     };
 
-    // [NEW] 물품 반납 핸들러 (POST /api/rentals/{id}/return) - v.02.05 추가
+    // [NEW] [B] 결제 시뮬레이션 핸들러
+    const handlePayment = async (rentalId) => {
+        // 실제로는 여기서 Toss Payments 창을 띄우겠지만, 지금은 바로 결제 승인 API를 호출합니다.
+        if (!window.confirm("150,000원을 결제하시겠습니까? (테스트)")) return;
+
+        if (IS_MOCK_MODE) {
+            alert("[Mock] 결제가 완료되었습니다.");
+            setRentals(prev => prev.map(r => r.rentalId === rentalId ? { ...r, status: 'PAID' } : r));
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('accessToken');
+            // 결제 승인 API 호출
+            const response = await fetch(`${API_BASE_URL}/api/payments/confirm`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                    ...TUNNEL_HEADERS
+                },
+                body: JSON.stringify({
+                    rentalId: rentalId,
+                    paymentKey: "TEST_PAYMENT_KEY", // 임시 키
+                    orderId: `ORDER_${rentalId}`,   // 임시 주문 ID
+                    amount: 150000                  // 임시 금액 (원래는 rental.totalPrice 써야 함)
+                })
+            });
+
+            if (response.ok) {
+                alert("결제가 완료되었습니다! 주인이 물품을 전달하면 대여가 시작됩니다.");
+                fetchMyRentals();
+            } else {
+                const err = await response.json();
+                alert(err.message || "결제 실패");
+            }
+        } catch (error) {
+            console.error("결제 오류:", error);
+        }
+    };
+
+    // [C]  물품 반납 핸들러 (POST /api/rentals/{id}/return) - v.02.05 추가
     const handleReturn = async (rentalId) => {
         if (!window.confirm("물건을 반납하시겠습니까?\n반납 후에는 상태를 되돌릴 수 없습니다.")) return;
 
@@ -151,11 +193,12 @@ export default function SentRequests() {
         }
     };
 
-    // 리뷰 작성 모달 열기 핸들러
+    // [D] 리뷰 작성 모달 열기 핸들러
     const handleOpenReview = (rentalId) => {
         setSelectedRentalIdForReview(rentalId);
         setReviewModalOpen(true);
     };
+
 
     // 로딩 중 표시
     if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}><CircularProgress /></Box>;
@@ -225,7 +268,28 @@ export default function SentRequests() {
                                                     </Button>
                                                 )}
 
-                                                {/* Case 2: 대여 중 (RENTING) -> [반납 하기] (NEW) */}
+
+                                                {/* [NEW] Case 2: 승인됨 (APPROVED) -> [결제 하기] 버튼 노출 */}
+                                                {rental.status === 'APPROVED' && (
+                                                    <Button
+                                                        variant="contained"
+                                                        color="primary" // 결제는 중요한 액션이므로 Primary 컬러
+                                                        size="small"
+                                                        onClick={() => handlePayment(rental.rentalId)}
+                                                        sx={{ fontWeight: 'bold' }}
+                                                    >
+                                                        결제 하기
+                                                    </Button>
+                                                )}
+
+                                                {/* [NEW] Case 3: 결제 완료 (PAID) -> 대기 안내 메시지 (버튼 없음) */}
+                                                {rental.status === 'PAID' && (
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        주인에게 물건을 받으세요
+                                                    </Typography>
+                                                )}
+
+                                                {/* Case 4: 대여 중 (RENTING) -> [반납 하기]  */}
                                                 {rental.status === 'RENTING' && (
                                                     <Button
                                                         variant="contained"
@@ -239,7 +303,7 @@ export default function SentRequests() {
                                                     </Button>
                                                 )}
 
-                                                {/* Case 3: 반납 완료 (RETURNED) -> [후기 작성] */}
+                                                {/* Case 5: 반납 완료 (RETURNED) -> [후기 작성] */}
                                                 {rental.status === 'RETURNED' && (
                                                     <Button
                                                         variant="contained"

@@ -20,6 +20,7 @@ import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 //02.09 import 추가
 import AppsIcon from '@mui/icons-material/Apps';
 import LaptopIcon from '@mui/icons-material/Laptop';
+import KitchenIcon from '@mui/icons-material/Kitchen';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import ForestIcon from '@mui/icons-material/Forest';
 import BuildIcon from '@mui/icons-material/Build';
@@ -77,6 +78,7 @@ function deg2rad(deg) {
 const CATEGORY_ICONS = {
   ALL: <AppsIcon />,
   DIGITAL: <LaptopIcon />,
+  LIVING: <KitchenIcon />,
   CAMERA: <CameraAltIcon />,
   CAMPING: <ForestIcon />,
   TOOL: <BuildIcon />,
