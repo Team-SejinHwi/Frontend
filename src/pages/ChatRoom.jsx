@@ -43,14 +43,29 @@ const ChatRoom = () => {
   useEffect(() => {
     const initializeChat = async () => {
       try {
+        // [A] Mock 모드 수정: 방 번호(roomId)에 따라 다른 대화 보여주기
         if (IS_MOCK_MODE) {
           setMyId(1); // 내 ID를 1번으로 가정
-          setMessages([
-            // [UPDATE] v.02.05 명세에 맞게 sendTime -> sendDate(포맷팅 문자열)로 변경
-            { messageId: 1, senderId: 2, senderName: "판매자", message: "안녕하세요! 물건 상태 어떤가요?", sendDate: "2026-02-05 14:00:00", type: 'TALK' },
-            { messageId: 2, senderId: 1, senderName: "나", message: "안녕하세요. 기스 없이 깨끗합니다!", sendDate: "2026-02-05 14:05:00", type: 'TALK' },
-            { messageId: 3, senderId: 2, senderName: "판매자", message: "오 좋네요. 직거래 가능하신가요?", sendDate: "2026-02-05 14:10:00", type: 'TALK' }
-          ]);
+
+          // 방 번호를 문자열로 변환하여 비교 (URL params는 문자열임)
+          if (String(roomId) === '15') {
+            setMessages([
+              { messageId: 1, senderId: 2, senderName: "판매자", message: "안녕하세요! 맥북 상태 어떤가요?", sendDate: "2026-02-12 14:00:00", type: 'TALK' },
+              { messageId: 2, senderId: 1, senderName: "나", message: "기스 없이 깨끗합니다! 사진 보셨나요?", sendDate: "2026-02-12 14:05:00", type: 'TALK' },
+              { messageId: 3, senderId: 2, senderName: "판매자", message: "네 봤습니다. 직거래 가능하신가요?", sendDate: "2026-02-12 14:30:00", type: 'TALK' }
+            ]);
+          } else if (String(roomId) === '16') {
+            setMessages([
+              { messageId: 10, senderId: 1, senderName: "나", message: "저기요, 텐트 구성품 빠진 거 없나요?", sendDate: "2026-02-11 09:00:00", type: 'TALK' },
+              { messageId: 11, senderId: 3, senderName: "캠핑족", message: "네 전부 확인해서 넣었습니다. 걱정 마세요.", sendDate: "2026-02-11 10:30:00", type: 'TALK' },
+            ]);
+          } else {
+            // 그 외의 방
+            setMessages([
+              { messageId: 99, senderId: 99, senderName: "알림", message: "새로운 대화방입니다.", sendDate: dayjs().format("YYYY-MM-DD HH:mm:ss"), type: 'TALK' }
+            ]);
+          }
+
           setLoading(false);
           return;
         }

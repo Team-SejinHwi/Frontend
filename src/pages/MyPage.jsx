@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     Container, Typography, Box, Grid, Paper, Avatar, CircularProgress, Button,
     Dialog, DialogTitle, DialogContent, DialogActions, TextField, Stack,
-    Chip, Tabs, Tab, Fade, List, ListItem, ListItemAvatar, ListItemText, Divider, ListItemButton
+    Chip, Tabs, Tab, Fade
 } from '@mui/material';
 
 // 아이콘 Import
@@ -22,63 +22,7 @@ import { mockItems, mockUser } from '../mocks/mockData';
 import ItemCard from '../components/ItemCard';
 import ReceivedRequests from '../components/ReceivedRequests';
 import SentRequests from '../components/SentRequests';
-
-// =================================================================
-// [ADD] 4. 채팅 목록 컴포넌트 (2월 5일 명세서 3-1, 3-2 기반)
-// =================================================================
-function ChatList() {
-    const [rooms, setRooms] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const navigate = useNavigate();
-
-    useEffect(() => {
-        const fetchChatRooms = async () => {
-            try {
-                if (IS_MOCK_MODE) {
-                    setRooms([{ roomId: 15, lastMessage: "안녕하세요 대여 가능한가요?", sendDate: "2026-02-05 14:30:00" }]);
-                    setLoading(false);
-                    return;
-                }
-                const token = localStorage.getItem('accessToken');
-                // 명세서 기반 채팅방 목록 조회 (구현 시 추가 필요했던 API)
-                const res = await fetch(`${API_BASE_URL}/api/chat/rooms`, {
-                    headers: { ...TUNNEL_HEADERS, 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const result = await res.json();
-                    setRooms(result.data || []);
-                }
-            } catch (e) { console.error("채팅 목록 로드 실패", e); }
-            finally { setLoading(false); }
-        };
-        fetchChatRooms();
-    }, []);
-
-    if (loading) return <CircularProgress size={24} sx={{ m: 2 }} />;
-    if (rooms.length === 0) return <Typography sx={{ p: 3 }}>참여 중인 채팅방이 없습니다.</Typography>;
-
-    return (
-        <List sx={{ bgcolor: 'background.paper', borderRadius: 2 }}>
-            {rooms.map((room) => (
-                <React.Fragment key={room.roomId}>
-                    <ListItem disablePadding>
-                        <ListItemButton onClick={() => navigate(`/chat/${room.roomId}`)}>
-                            <ListItemAvatar><Avatar><ChatIcon /></Avatar></ListItemAvatar>
-                            <ListItemText
-                                primary={`채팅방 #${room.roomId}`}
-                                secondary={room.lastMessage || "대화 내용이 없습니다."}
-                            />
-                            <Typography variant="caption" color="text.secondary">
-                                {room.sendDate}
-                            </Typography>
-                        </ListItemButton>
-                    </ListItem>
-                    <Divider variant="inset" component="li" />
-                </React.Fragment>
-            ))}
-        </List>
-    );
-}
+import ChatList from '../components/ChatList';
 
 export default function MyPage() {
     const navigate = useNavigate();

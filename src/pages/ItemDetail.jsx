@@ -196,10 +196,18 @@ export default function ItemDetail() {
       }
       return;
     }
-    //  Mock 모드 체크
+    // [A] Mock 모드: 상품 ID에 따라 정해진 채팅방으로 이동 (시나리오 연출용)
     if (IS_MOCK_MODE) {
-      alert("[Mock] 채팅방 생성");
-      navigate(`/chat/999`);
+      if (item.itemId === 10) {
+        alert("[Mock] 맥북 채팅방으로 이동합니다.");
+        navigate(`/chat/15`); // ChatList에 있는 15번 방과 연결
+      } else if (item.itemId === 9) {
+        alert("[Mock] 텐트 채팅방으로 이동합니다.");
+        navigate(`/chat/16`); // ChatList에 있는 16번 방과 연결
+      } else {
+        alert("[Mock] 새 채팅방 생성 (테스트)");
+        navigate(`/chat/999`);
+      }
       return;
     }
 
