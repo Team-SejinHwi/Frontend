@@ -10,7 +10,7 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 
 // ✅ config에서 기본 URL 가져오기 (Login.jsx와 통일)
-import { API_BASE_URL, IS_MOCK_MODE, TUNNEL_HEADERS } from '../config';
+import { API_BASE_URL, TUNNEL_HEADERS } from '../config';
 
 export default function Signup() {
   // [Hook 1] useNavigate: 회원가입 완료 후 로그인 페이지로 이동시키기 위해 사용.

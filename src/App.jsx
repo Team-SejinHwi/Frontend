@@ -9,8 +9,14 @@ import ItemEdit from './pages/ItemEdit';
 import MyPage from './pages/MyPage';
 import ChatRoom from './pages/ChatRoom';
 
+
+// [NEW] 결제 관련 페이지 추가 (ver. 2026.02.13)
+import PaymentSuccess from './pages/PaymentSuccess';
+import PaymentFail from './pages/PaymentFail';
+
+
 function App() {
-  // 🚀 [상태 관리 핵심] 로그인 상태를 여기서 관리합니다.
+  // 🚀 [상태 관리 핵심] 로그인 상태를 여기서 관리.
   // isLoggedIn: 현재 로그인 여부 (true/false)
   // setIsLoggedIn: 로그인 상태를 변경하는 함수
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
@@ -47,7 +53,7 @@ function App() {
           path="/signup"
           element={<Signup />} />
 
-        {/* 🚀  상세 페이지 라우트 설정 */}
+        {/*   상세 페이지 라우트 설정 */}
         {/* /items/10, /items/9 처럼 뒤에 숫자가 오면 ItemDetail을 보여줌 */}
         <Route
           path="/items/:id"
@@ -70,11 +76,21 @@ function App() {
           element={<MyPage />} />
 
 
-        {/* 🚀 채팅방 라우트 추가 */}
+        {/*  채팅방 라우트  */}
 
         <Route
           path="/chat/:roomId"
-          element={<ChatRoom />}
+          element={<ChatRoom />} />
+
+        {/* 🚀 [NEW] 결제 결과 처리 라우트 */}
+
+        <Route
+          path="/payment/success"
+          element={<PaymentSuccess />} />
+
+        <Route
+          path="/payment/fail"
+          element={<PaymentFail />}
         />
       </Routes>
     </BrowserRouter >

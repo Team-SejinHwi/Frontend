@@ -9,10 +9,21 @@ import dayjs from 'dayjs';
 // 아이콘
 import RateReviewIcon from '@mui/icons-material/RateReview'; // 리뷰 아이콘
 import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn'; //  반납 아이콘
+import PaymentIcon from '@mui/icons-material/Payment'; // 결제 아이콘 추가 (2026.02.13)
+
+// 💳 토스 페이먼츠 SDK (2026.02.13)
+import { loadTossPayments } from '@tosspayments/payment-sdk';
 
 import { API_BASE_URL, IS_MOCK_MODE, TUNNEL_HEADERS } from '../config';
 import { mockMyRentals, mockItems } from '../mocks/mockData';
 import ReviewModal from './ReviewModal';
+
+
+// =================================================================
+// 🔑 토스 페이먼츠 테스트용 클라이언트 키
+// =================================================================
+const TOSS_CLIENT_KEY = "test_ck_6bJXmgo28emN2ePMj9QY8LAnGKWx";
+
 
 // =================================================================
 // 0. 상태별 뱃지 디자인 설정 (v.02.11 명세 반영)
@@ -65,7 +76,7 @@ export default function SentRequests() {
                 setRentals(result.data || []);
             }
         } catch (error) {
-            console.error("내 예약 조회 실패:", error);
+            console.error("내 대여 내역 로드 실패:", error);
         } finally {
             setLoading(false);
         }
@@ -80,80 +91,36 @@ export default function SentRequests() {
     // 3. 핸들러 (Event Handlers)
     // =================================================================
 
-    // [A] 요청 취소 핸들러 (POST /api/rentals/{id}/cancel)
-    const handleCancel = async (rentalId) => {
-        if (!window.confirm("정말 이 대여 요청을 취소하시겠습니까?")) return;
-
-        if (IS_MOCK_MODE) {
-            alert("[Mock] 취소되었습니다.");
-            setRentals(prev => prev.map(r => r.rentalId === rentalId ? { ...r, status: 'CANCELED' } : r));
-            return;
-        }
+    // [NEW] [A] 결제 시뮬레이션 핸들러 (v 2026.02.13)
+    const handlePayment = async (rental) => {
 
         try {
-            const token = localStorage.getItem('accessToken');
-            const response = await fetch(`${API_BASE_URL}/api/rentals/${rentalId}/cancel`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    ...TUNNEL_HEADERS
-                }
+            const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY);
+
+            // 결제 요청 (토스 창 띄우기)
+            await tossPayments.requestPayment('카드', {
+                amount: rental.totalPrice, // 결제 금액
+                orderId: `ORDER_${rental.rentalId}_${Date.now()}`, // 주문 ID (고유해야 함)
+                orderName: rental.itemTitle, // 주문명 (상품명)
+                customerName: `사용자_${rental.rentalId}`, // 구매자 이름 (선택)
+
+                // ✅ 결제 성공/실패 시 이동할 페이지 (App.jsx에 라우트 추가해야 함)
+                // window.location.origin은 현재 도메인(예: http://localhost:3000)을 자동으로 가져옴.
+                successUrl: `${window.location.origin}/payment/success`,
+                failUrl: `${window.location.origin}/payment/fail`,
             });
 
-            if (response.ok) {
-                alert("요청이 취소되었습니다.");
-                fetchMyRentals(); // 목록 갱신
-            } else {
-                const err = await response.json();
-                alert(err.message || "취소 실패");
-            }
         } catch (error) {
-            console.error("취소 오류:", error);
+            console.error("결제 창 호출 실패:", error);
+            if (error.code === 'USER_CANCEL') {
+                // 사용자가 결제창을 닫은 경우 (에러 아님)
+            } else {
+                alert("결제 연동 중 오류가 발생했습니다.");
+            }
         }
     };
 
-    // [NEW] [B] 결제 시뮬레이션 핸들러
-    const handlePayment = async (rentalId) => {
-        // 실제로는 여기서 Toss Payments 창을 띄우겠지만, 지금은 바로 결제 승인 API를 호출합니다.
-        if (!window.confirm("150,000원을 결제하시겠습니까? (테스트)")) return;
-
-        if (IS_MOCK_MODE) {
-            alert("[Mock] 결제가 완료되었습니다.");
-            setRentals(prev => prev.map(r => r.rentalId === rentalId ? { ...r, status: 'PAID' } : r));
-            return;
-        }
-
-        try {
-            const token = localStorage.getItem('accessToken');
-            // 결제 승인 API 호출
-            const response = await fetch(`${API_BASE_URL}/api/payments/confirm`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                    ...TUNNEL_HEADERS
-                },
-                body: JSON.stringify({
-                    rentalId: rentalId,
-                    paymentKey: "TEST_PAYMENT_KEY", // 임시 키
-                    orderId: `ORDER_${rentalId}`,   // 임시 주문 ID
-                    amount: 150000                  // 임시 금액 (원래는 rental.totalPrice 써야 함)
-                })
-            });
-
-            if (response.ok) {
-                alert("결제가 완료되었습니다! 주인이 물품을 전달하면 대여가 시작됩니다.");
-                fetchMyRentals();
-            } else {
-                const err = await response.json();
-                alert(err.message || "결제 실패");
-            }
-        } catch (error) {
-            console.error("결제 오류:", error);
-        }
-    };
-
-    // [C]  물품 반납 핸들러 (POST /api/rentals/{id}/return) - v.02.05 추가
+    // [B]  물품 반납 핸들러 (POST /api/rentals/{id}/return) - (v 2026.02.13)
     const handleReturn = async (rentalId) => {
         if (!window.confirm("물건을 반납하시겠습니까?\n반납 후에는 상태를 되돌릴 수 없습니다.")) return;
 
@@ -193,10 +160,42 @@ export default function SentRequests() {
         }
     };
 
-    // [D] 리뷰 작성 모달 열기 핸들러
+    // [] 리뷰 작성 모달 열기 핸들러
     const handleOpenReview = (rentalId) => {
         setSelectedRentalIdForReview(rentalId);
         setReviewModalOpen(true);
+    };
+
+    // [] 요청 취소 핸들러 (POST /api/rentals/{id}/cancel)
+    const handleCancel = async (rentalId) => {
+        if (!window.confirm("정말 이 대여 요청을 취소하시겠습니까?")) return;
+
+        if (IS_MOCK_MODE) {
+            alert("[Mock] 취소되었습니다.");
+            setRentals(prev => prev.map(r => r.rentalId === rentalId ? { ...r, status: 'CANCELED' } : r));
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('accessToken');
+            const response = await fetch(`${API_BASE_URL}/api/rentals/${rentalId}/cancel`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    ...TUNNEL_HEADERS
+                }
+            });
+
+            if (response.ok) {
+                alert("요청이 취소되었습니다.");
+                fetchMyRentals(); // 목록 갱신
+            } else {
+                const err = await response.json();
+                alert(err.message || "취소 실패");
+            }
+        } catch (error) {
+            console.error("취소 오류:", error);
+        }
     };
 
 
@@ -233,7 +232,7 @@ export default function SentRequests() {
                                                 주인: <strong>{rental.ownerName}</strong>
                                             </Typography>
                                             <Typography variant="body2">
-                                                📅 {dayjs(rental.startDate).format('MM.DD HH:mm')} ~ {dayjs(rental.endDate).format('MM.DD HH:mm')}
+                                                📅 기간: {dayjs(rental.startDate).format('MM.DD HH:mm')} ~ {dayjs(rental.endDate).format('MM.DD HH:mm')}
                                             </Typography>
                                             <Typography variant="body2" fontWeight="bold" sx={{ mt: 0.5 }}>
                                                 결제 예정 금액: {rental.totalPrice?.toLocaleString()}원
@@ -253,7 +252,7 @@ export default function SentRequests() {
                                                 label={statusStyle.label}
                                                 color={statusStyle.color}
                                                 variant={statusStyle.variant}
-                                                sx={{ mb: 1 }}
+                                                sx={{ mb: 1, fontWeight: 'bold' }}
                                             />
                                             <Box>
                                                 {/* Case 1: 대기 상태 (WAITING) -> [요청 취소] */}
@@ -275,7 +274,8 @@ export default function SentRequests() {
                                                         variant="contained"
                                                         color="primary" // 결제는 중요한 액션이므로 Primary 컬러
                                                         size="small"
-                                                        onClick={() => handlePayment(rental.rentalId)}
+                                                        startIcon={<PaymentIcon />}
+                                                        onClick={() => handlePayment(rental)}
                                                         sx={{ fontWeight: 'bold' }}
                                                     >
                                                         결제 하기
@@ -284,12 +284,12 @@ export default function SentRequests() {
 
                                                 {/* [NEW] Case 3: 결제 완료 (PAID) -> 대기 안내 메시지 (버튼 없음) */}
                                                 {rental.status === 'PAID' && (
-                                                    <Typography variant="caption" color="text.secondary">
+                                                    <Typography variant="caption" color="text.secondary" display="block">
                                                         주인에게 물건을 받으세요
                                                     </Typography>
                                                 )}
 
-                                                {/* Case 4: 대여 중 (RENTING) -> [반납 하기]  */}
+                                                {/* Case 4: 대여 중 (RENTING) -> [반납 하기]버튼  */}
                                                 {rental.status === 'RENTING' && (
                                                     <Button
                                                         variant="contained"
