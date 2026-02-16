@@ -93,9 +93,11 @@ export default function SentRequests() {
 
     // [NEW] [A] 결제 시뮬레이션 핸들러 (v 2026.02.13)
     const handlePayment = async (rental) => {
-
         try {
             const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY);
+
+            // 🌟 [추가] 결제하러 떠나기 전에 rentalId를 저장! (2026.02.15)
+            localStorage.setItem('tempRentalId', rental.rentalId);
 
             // 결제 요청 (토스 창 띄우기)
             await tossPayments.requestPayment('카드', {
@@ -305,15 +307,28 @@ export default function SentRequests() {
 
                                                 {/* Case 5: 반납 완료 (RETURNED) -> [후기 작성] */}
                                                 {rental.status === 'RETURNED' && (
-                                                    <Button
-                                                        variant="contained"
-                                                        color="success" // 리뷰는 긍정적인 느낌의 success 컬러 추천
-                                                        size="small"
-                                                        startIcon={<RateReviewIcon />}
-                                                        onClick={() => handleOpenReview(rental.rentalId)}
-                                                    >
-                                                        후기 작성
-                                                    </Button>
+                                                    rental.isReviewed ? (
+                                                        // [A] 이미 리뷰를 쓴 경우: 비활성화된 버튼 표시
+                                                        <Button
+                                                            variant="outlined"
+                                                            disabled
+                                                            size="small"
+                                                            startIcon={<RateReviewIcon />}
+                                                        >
+                                                            후기 작성 완료
+                                                        </Button>
+                                                    ) : (
+                                                        // [B] 리뷰를 안 쓴 경우: 작성 버튼 표시
+                                                        <Button
+                                                            variant="contained"
+                                                            color="success"
+                                                            size="small"
+                                                            startIcon={<RateReviewIcon />}
+                                                            onClick={() => handleOpenReview(rental.rentalId)}
+                                                        >
+                                                            후기 작성
+                                                        </Button>
+                                                    )
                                                 )}
                                             </Box>
                                         </Grid>

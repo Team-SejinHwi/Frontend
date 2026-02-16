@@ -105,6 +105,7 @@ const RentalModal = ({ open, onClose, item, onRentalSuccess }) => {
       itemId: item.itemId,
       startDate: startDateTime.format('YYYY-MM-DDTHH:mm:ss'),
       endDate: endDateTime.format('YYYY-MM-DDTHH:mm:ss'),
+      totalPrice: totalPrice
     };
 
     setLoading(true);

@@ -6,7 +6,7 @@ module.exports = function (app) {
     ['/api', '/images'], 
     createProxyMiddleware({
       // target을 새로운 Cloudflare Tunnel 주소로 변경합니다.
-      target: 'https://pubmed-descriptions-vitamin-cabin.trycloudflare.com', 
+      target: 'https://genes-researchers-qualifications-foster.trycloudflare.com/', 
       changeOrigin: true,
       onProxyReq: function (proxyReq, req, res) {
         // Cloudflare Tunnel은 보통 이 헤더가 필요 없으나, 
@@ -20,7 +20,7 @@ module.exports = function (app) {
   app.use(
     '/ws-stomp',
     createProxyMiddleware({
-      target: 'https://pubmed-descriptions-vitamin-cabin.trycloudflare.com',
+      target: 'https://genes-researchers-qualifications-foster.trycloudflare.com/',
       changeOrigin: true,
       ws: true, // WebSocket 모드 유지
       onProxyReq: function (proxyReq, req, res) {

@@ -1,5 +1,6 @@
 // src/pages/PaymentSuccess.jsx
-import React, { useEffect, useState } from 'react';
+
+import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Box, Typography, Button, CircularProgress, Paper } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -7,15 +8,31 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { API_BASE_URL, TUNNEL_HEADERS, IS_MOCK_MODE } from '../config';
 
 export default function PaymentSuccess() {
-    const [searchParams] = useSearchParams();
+
+
+    const [searchParams] = useSearchParams(); //Hook은 컴포넌트 최상단에서 호출
     const navigate = useNavigate();
     const [isConfirming, setIsConfirming] = useState(true);
 
+    // 🌟 [핵심] 중복 요청 방지용 깃발 (ref는 리렌더링 되어도 값이 유지됨)
+    const isProcessing = useRef(false);
+
     useEffect(() => {
+        // 🌟 [핵심] 이미 처리 중이라면(깃발이 true라면) 함수 종료!
+        if (isProcessing.current) {
+            return;
+        }
+
+        // 깃발을 꽂음 (이제부터 중복 진입 불가)
+        isProcessing.current = true;
+
         // 1. URL 쿼리 파라미터에서 데이터 추출
         const paymentKey = searchParams.get("paymentKey");
         const orderId = searchParams.get("orderId");
         const amount = Number(searchParams.get("amount"));
+
+        // 🌟 [추가] 아까 저장해둔 rentalId 꺼내기 (26.02.15)
+        const storedRentalId = localStorage.getItem('tempRentalId');
 
         if (!paymentKey || !orderId || !amount) {
             alert("결제 정보가 올바르지 않습니다.");
@@ -52,6 +69,7 @@ export default function PaymentSuccess() {
                         ...TUNNEL_HEADERS
                     },
                     body: JSON.stringify({
+                        rentalId: Number(storedRentalId),
                         paymentKey,
                         orderId,
                         amount

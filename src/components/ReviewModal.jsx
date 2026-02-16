@@ -68,10 +68,14 @@ export default function ReviewModal({ open, onClose, rentalId, onSuccess }) {
 
       if (response.ok) {
         alert("후기가 성공적으로 등록되었습니다.");
-        onSuccess(); // 목록 새로고침
+        onSuccess();
+        handleClose();
+      } else if (response.status === 409) {
+        // 409 Conflict: 서버에서 중복 데이터라고 알려줄 때
+        alert("이미 이 거래에 대한 후기를 작성하셨습니다.");
         handleClose();
       } else {
-        // 에러 처리 (예: "작성 기간이 지났습니다" 등)
+        // 기타 에러
         const errorData = await response.json();
         alert(errorData.message || "리뷰 등록 실패");
       }
@@ -82,8 +86,6 @@ export default function ReviewModal({ open, onClose, rentalId, onSuccess }) {
       setLoading(false);
     }
   };
-
-
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
