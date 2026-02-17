@@ -19,8 +19,11 @@ function App() {
   // 🚀 [상태 관리 핵심] 로그인 상태를 여기서 관리.
   // isLoggedIn: 현재 로그인 여부 (true/false)
   // setIsLoggedIn: 로그인 상태를 변경하는 함수
+
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    return localStorage.getItem('isLoggedIn') === '1'; // '1'이면 true, 아니면 false
+    
+    // 로컬 스토리지에 'isLoggedIn' 키가 있으면 로그인 상태 유지 (문자열 '1' 확인)
+    return localStorage.getItem('isLoggedIn') === '1' || !!localStorage.getItem('accessToken');
   });
 
   return (
@@ -71,9 +74,13 @@ function App() {
           element={<ItemEdit />} />
 
         {/* 마이페이지 라우트 */}
+        {/*  [수정 포인트] 2026.02.17 Ver -  MyPage에도 Navbar가 추가되었으므로,
+          Home과 똑같이 isLoggedIn과 setIsLoggedIn을 넘겨줘야 한다
+        */}
         <Route
           path="/mypage"
-          element={<MyPage />} />
+          element={<MyPage isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />}
+        />
 
 
         {/*  채팅방 라우트  */}
