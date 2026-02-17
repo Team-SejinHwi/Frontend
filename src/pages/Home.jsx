@@ -4,7 +4,7 @@ import { Map, MapMarker } from 'react-kakao-maps-sdk'; // 지도 라이브러리
 
 // UI 구성을 위한 Material UI 컴포넌트들
 import {
-  AppBar, Toolbar, Button, Typography, Box, Container, Stack, Paper,
+  Button, Typography, Box, Container, Stack, Paper,
   Grid, Fab, TextField, InputAdornment, Chip, ToggleButton, ToggleButtonGroup,
   IconButton, Skeleton
 } from '@mui/material';
@@ -42,6 +42,7 @@ import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt
 import { CATEGORIES } from '../constants/categories';
 import ItemCard from '../components/ItemCard';
 import { mockItems } from '../mocks/mockData';
+import Navbar from '../components/Navbar';
 import { API_BASE_URL, IS_MOCK_MODE, TUNNEL_HEADERS } from '../config';
 
 const MAIN_IMAGE_URL = "https://i.postimg.cc/MHNP5WB5/image.jpg";
@@ -130,9 +131,6 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
 
   // [NEW] 카테고리 스크롤 제어를 위한 Ref
   const categoryScrollRef = useRef(null);
-
-  const myEmail = localStorage.getItem('userEmail') || '';
-  const myName = localStorage.getItem('userName') || myEmail.split('@')[0] || '사용자';
 
   // =================================================================
   // 2. 데이터 로드 함수 (핵심 로직 - 위치 기반 필터링 & API v.02.05 limit 적용)
@@ -293,51 +291,11 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
     if (e.key === 'Enter') handleSearch();
   };
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    localStorage.clear();
-    alert("로그아웃 되었습니다.");
-    navigate('/');
-  };
-
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#f9f9f9', overflowX: 'hidden' }}>
+    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', overflowX: 'hidden' }}>
 
-      {/* --- 네비게이션 바 --- */}
-
-      {/* [✨ 수정 후: 글래스모피즘 적용]  2026.02.10 수정 */}
-      <AppBar
-        position="sticky" // 스크롤 해도 상단에 붙어있게 변경
-        elevation={0}     // 그림자 제거 (깔끔하게)
-        sx={{
-          top: 0,
-          zIndex: 100, // 다른 요소보다 위에 오도록
-          // 핵심: 반투명 흰색 배경 + 블러 효과
-          bgcolor: 'rgba(255, 255, 255, 0.7)',
-          backdropFilter: 'blur(12px)',
-          borderBottom: '1px solid rgba(0,0,0,0.05)' // 아주 연한 경계선 추가
-        }}
-      >
-        <Toolbar sx={{ justifyContent: 'space-between' }}>
-          <Typography variant="h6" sx={{ fontWeight: 'bold', cursor: 'pointer', color: '#333' }} onClick={() => navigate('/')}>
-            Re:Borrow
-          </Typography>
-          {isLoggedIn ? (
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="body2" onClick={() => navigate('/mypage')} sx={{ fontWeight: 'bold', color: 'primary.main', cursor: 'pointer', textDecoration: 'underline' }}>
-                {myName}님
-              </Typography>
-              <Button variant="outlined" color="primary" onClick={handleLogout} sx={{ fontWeight: 'bold' }}>
-                로그아웃
-              </Button>
-            </Stack>
-          ) : (
-            <Button variant="contained" onClick={() => navigate('/login')} sx={{ bgcolor: '#333', color: 'white', fontWeight: 'bold' }}>
-              로그인/회원가입
-            </Button>
-          )}
-        </Toolbar>
-      </AppBar>
+      {/* --- 네비게이션 바 [✨ REPLACED] Ver. 2026.02.17 --- */}
+      <Navbar isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />
 
       {/* --- 메인 배너 --- */}
       <Box sx={{

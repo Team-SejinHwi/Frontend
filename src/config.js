@@ -1,7 +1,7 @@
 // src/config.js
 
 // 🚩 [스위치] true: 테스트 모드 / false: 실전 모드
-export const IS_MOCK_MODE = false; 
+export const IS_MOCK_MODE = true; 
 
 // 🔗 [주소] Cloudflare Tunnel 주소로 업데이트
 // 기존 'https://neo-rental-project.loca.lt'에서 변경합니다.
