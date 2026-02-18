@@ -16,7 +16,7 @@ export default function ItemCard({ item }) {
   const getStatusOverlay = (status) => {
     if (status === 'AVAILABLE') return null;
 
-    const label = status === 'RENTED' ? '대여 중' : '거래 완료';
+    const label = "대여 불가";
 
     return (
       <Box sx={{

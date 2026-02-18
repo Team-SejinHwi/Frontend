@@ -3,9 +3,11 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 // Material UI 컴포넌트들을 한 번에 import
 import {
-  TextField, Button, Typography, Avatar, Box, Container, Paper, Stack, Link
+  TextField, Button, Typography, Avatar, Box, Container, Paper, Stack, Link, IconButton
 } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import CloseIcon from '@mui/icons-material/Close'; // [✨ 추가] 닫기 아이콘
+
 // 페이지 이동을 위한 Hook과 RouterLink 컴포넌트
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 
@@ -96,6 +98,7 @@ export default function Signup() {
           component={Paper}
           elevation={10} // 그림자 깊이 (입체감)
           sx={{
+            position: 'relative',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -104,6 +107,14 @@ export default function Signup() {
             width: '100%',
           }}
         >
+          {/* [✨ 추가] 우측 상단 닫기(X) 버튼 */}
+          <IconButton
+            onClick={() => navigate('/')}
+            sx={{ position: 'absolute', top: 8, right: 8, color: 'text.secondary' }}
+          >
+            <CloseIcon />
+          </IconButton>
+
           {/* 상단 아이콘 */}
           <Avatar sx={{ m: 1, bgcolor: 'secondary.main' }}>
             <LockOutlinedIcon />
@@ -123,7 +134,7 @@ export default function Signup() {
               margin="normal"
               required
               fullWidth
-              label="Email Address"
+              label="이메일 주소"
               // [유효성 검사 등록]
               {...register("email", {
                 required: "이메일은 필수입니다.", // 필수 값 체크
@@ -142,7 +153,7 @@ export default function Signup() {
               margin="normal"
               required
               fullWidth
-              label="Password"
+              label="비밀번호"
               type="password" // 입력값 가림 처리
               {...register("password", {
                 required: "비밀번호를 입력해주세요.",
@@ -158,7 +169,7 @@ export default function Signup() {
               margin="normal"
               required
               fullWidth
-              label="Confirm Password"
+              label="비밀번호 확인"
               type="password"
               {...register("confirmPassword", {
                 required: "비밀번호 확인을 입력해주세요.",
@@ -176,7 +187,7 @@ export default function Signup() {
               margin="normal"
               required
               fullWidth
-              label="Name"
+              label="이름"
               {...register("name", { required: "이름을 입력해주세요." })}
               error={!!errors.name}
               helperText={errors.name?.message}
@@ -187,7 +198,7 @@ export default function Signup() {
               margin="normal"
               required
               fullWidth
-              label="Phone Number"
+              label="휴대폰 번호"
               placeholder="010-0000-0000" // 사용자에게 입력 형식을 힌트로 줌
               {...register("phone", { required: "휴대폰 번호를 입력해주세요." })}
               error={!!errors.phone}
@@ -199,7 +210,7 @@ export default function Signup() {
               margin="normal"
               required
               fullWidth
-              label="Address"
+              label="주소"
               {...register("address", { required: "주소를 입력해주세요." })}
               error={!!errors.address}
               helperText={errors.address?.message}
@@ -220,7 +231,7 @@ export default function Signup() {
             <Stack direction="row" justifyContent="center">
               {/* component={RouterLink}를 사용하여 페이지 전체 새로고침 없이 URL만 변경 */}
               <Link component={RouterLink} to="/login" variant="body2" sx={{ cursor: 'pointer' }}>
-                {"Already have an account? Sign in"}
+                {"이미 계정이 있으신가요? 로그인 하세요."}
               </Link>
             </Stack>
           </Box>

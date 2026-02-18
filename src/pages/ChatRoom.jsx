@@ -201,10 +201,10 @@ const ChatRoom = () => {
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', height: '100vh', alignItems: 'center' }}><CircularProgress /></Box>;
 
   // =================================================================
-  // 🎨 UI 렌더링 (카카오톡 스타일 적용)
+  // 🎨 UI 렌더링
   // =================================================================
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: '#b2c7d9' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'linear-gradient(180deg, #D6E4FF 0%, #F1F5F9 100%)' }}>
 
       {/* 🔹 상단 헤더 */}
       <AppBar
@@ -267,15 +267,22 @@ const ChatRoom = () => {
                   </Typography>
 
                   <Paper
-                    elevation={1}
+                    elevation={0}
                     sx={{
-                      p: '8px 12px',
-                      bgcolor: isMe ? '#fef01b' : '#ffffff',
-                      color: 'black',
-                      borderRadius: isMe ? '15px 0px 15px 15px' : '0px 15px 15px 15px',
-                      wordBreak: 'break-word',
-                      lineHeight: 1.5,
-                      fontSize: '0.95rem'
+                      p: '10px 16px',
+                      // 나: 브랜드 블루 그라데이션 적용
+                      background: isMe
+                        ? 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)'
+                        : '#ffffff',
+                      color: isMe ? 'white' : '#334155',
+                      // 말풍선 모양을 더 둥글게 (Pill Style)
+                      borderRadius: isMe
+                        ? '20px 20px 4px 20px'
+                        : '20px 20px 20px 4px',
+                      boxShadow: isMe
+                        ? '0 4px 12px rgba(25, 118, 210, 0.2)'
+                        : '0 2px 8px rgba(0,0,0,0.05)',
+                      fontSize: '0.95rem',
                     }}
                   >
                     {msg.message}
@@ -289,17 +296,20 @@ const ChatRoom = () => {
       </Box>
 
       {/* 🔹 하단 입력창 영역 */}
-      <Box sx={{ p: 1, bgcolor: '#ffffff' }}>
+      <Box sx={{
+        p: 2,
+        bgcolor: 'rgba(255, 255, 255, 0.8)',
+        backdropFilter: 'blur(10px)', // 글래스모피즘 효과
+        borderTop: '1px solid rgba(0,0,0,0.05)'
+      }}>
         <Paper
-          component="form"
           elevation={0}
           sx={{
-            p: '4px 8px',
+            p: '2px 8px',
             display: 'flex',
             alignItems: 'center',
-            bgcolor: '#f8f8f8',
-            borderRadius: 20,
-            border: '1px solid #e0e0e0'
+            bgcolor: '#f1f5f9',
+            borderRadius: '24px', // 더 둥글게
           }}
         >
           <TextField
@@ -315,18 +325,15 @@ const ChatRoom = () => {
             sx={{ px: 2, py: 1 }}
           />
           <IconButton
-            color="primary"
             onClick={sendMessage}
-            disabled={!input.trim()}
             sx={{
-              color: input.trim() ? '#3b1e1e' : '#ccc',
-              bgcolor: input.trim() ? '#fef01b' : 'transparent',
-              '&:hover': { bgcolor: '#f5e61b' },
-              transition: '0.2s',
-              width: 40, height: 40
+              bgcolor: '#1976d2', // 전송 버튼색 변경
+              color: 'white',
+              '&:hover': { bgcolor: '#1565c0' },
+              width: 36, height: 36, ml: 1
             }}
           >
-            <SendIcon sx={{ fontSize: 20 }} />
+            <SendIcon sx={{ fontSize: 18 }} />
           </IconButton>
         </Paper>
       </Box>

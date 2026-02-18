@@ -348,7 +348,7 @@ export default function ItemDetail() {
             fullWidth
             sx={{ py: 1.5, fontWeight: 'bold', bgcolor: '#ccc', color: '#666', borderRadius: 2 }}
           >
-            {item.itemStatus === 'RENTED' ? '현재 대여중입니다' : '거래가 완료된 상품'}
+           지금은 빌릴 수 없어요
           </Button>
         )}
       </Stack>
@@ -409,7 +409,7 @@ export default function ItemDetail() {
                 zIndex: 10, backdropFilter: 'blur(4px)'
               }}>
                 <Typography variant="h3" sx={{ color: 'white', fontWeight: '800', textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
-                  {item.itemStatus === 'RENTED' ? '대여 중' : '거래 완료'}
+                  대여 불가
                 </Typography>
               </Box>
             )}

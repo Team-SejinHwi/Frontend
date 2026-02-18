@@ -1,51 +1,33 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Map, MapMarker } from 'react-kakao-maps-sdk'; // 지도 라이브러리
 
 // UI 구성을 위한 Material UI 컴포넌트들
 import {
   Button, Typography, Box, Container, Stack, Paper,
-  Grid, Fab, TextField, InputAdornment, Chip, ToggleButton, ToggleButtonGroup,
-  IconButton, Skeleton
+  Grid, Fab, TextField, InputAdornment, Chip, ToggleButton, ToggleButtonGroup, Skeleton
 } from '@mui/material';
+
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import MyLocationIcon from '@mui/icons-material/MyLocation'; // 내 위치 아이콘
 import MapIcon from '@mui/icons-material/Map'; // 지도 아이콘
 import ListIcon from '@mui/icons-material/List'; // 리스트 아이콘
-// [NEW] 스크롤 화살표 아이콘 추가
-import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
-import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
-
-//02.09 import 추가
-import AppsIcon from '@mui/icons-material/Apps';
-import LaptopIcon from '@mui/icons-material/Laptop';
-import KitchenIcon from '@mui/icons-material/Kitchen';
-import CameraAltIcon from '@mui/icons-material/CameraAlt';
-import ForestIcon from '@mui/icons-material/Forest';
-import BuildIcon from '@mui/icons-material/Build';
-import SportsSoccerIcon from '@mui/icons-material/SportsSoccer';
-import CelebrationIcon from '@mui/icons-material/Celebration';
-import CheckroomIcon from '@mui/icons-material/Checkroom';
-import ChildCareIcon from '@mui/icons-material/ChildCare';
-import ChairIcon from '@mui/icons-material/Chair';
-import MenuBookIcon from '@mui/icons-material/MenuBook';
-import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import PetsIcon from '@mui/icons-material/Pets';
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
-import SecurityIcon from '@mui/icons-material/Security';
-import HandshakeIcon from '@mui/icons-material/Handshake';
-import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt';
+import ClearIcon from '@mui/icons-material/Clear'; // [✨ 추가됨]
+import IconButton from '@mui/material/IconButton'; // (이미 있다면 생략 가능)
 
 // 설정 및 데이터 import
 import { CATEGORIES } from '../constants/categories';
 import ItemCard from '../components/ItemCard';
-import { mockItems } from '../mocks/mockData';
 import Navbar from '../components/Navbar';
+import { mockItems } from '../mocks/mockData';
 import { API_BASE_URL, IS_MOCK_MODE, TUNNEL_HEADERS } from '../config';
 
-const MAIN_IMAGE_URL = "https://i.postimg.cc/MHNP5WB5/image.jpg";
+// [✨ NEW] 분리된 하위 컴포넌트들 임포트 (ver - 2026.02.18 추가)
+import HeroSection from '../components/home/HeroSection';
+import CategoryBar from '../components/home/CategoryBar';
+import HostBanner from '../components/home/HostBanner';
+import FeatureSection from '../components/home/FeatureSection';
 
 // 🧮 두 좌표(위도, 경도) 사이의 직선 거리 계산 함수
 // 단위: km (킬로미터)
@@ -71,29 +53,8 @@ function getDistanceFromLatLonInKm(lat1, lng1, lat2, lng2) {
 
 // 📐 각도(Degree)를 라디안(Radian)으로 변환하는 보조 함수
 // 수학 함수(sin, cos 등)는 라디안 값을 인자로 받기 때문에 필수적인 변환.
-function deg2rad(deg) {
-  return deg * (Math.PI / 180);
-}
+function deg2rad(deg) { return deg * (Math.PI / 180); }
 
-//아이콘 매핑 설정
-const CATEGORY_ICONS = {
-  ALL: <AppsIcon />,
-  DIGITAL: <LaptopIcon />,
-  LIVING: <KitchenIcon />,
-  CAMERA: <CameraAltIcon />,
-  CAMPING: <ForestIcon />,
-  TOOL: <BuildIcon />,
-  SPORTS: <SportsSoccerIcon />,
-  PARTY: <CelebrationIcon />,
-  CLOTHING: <CheckroomIcon />,
-  KIDS: <ChildCareIcon />,
-  FURNITURE: <ChairIcon />,
-  BOOK: <MenuBookIcon />,
-  GAME: <SportsEsportsIcon />,
-  BEAUTY: <AutoAwesomeIcon />,
-  PET: <PetsIcon />,
-  ETC: <MoreHorizIcon />,
-};
 
 //  💓 Pulsing Badge (내 주변 찾기 강조) 2026.02.10
 const pulseKeyframes = {
@@ -103,7 +64,6 @@ const pulseKeyframes = {
     '100%': { boxShadow: '0 0 0 0 rgba(46, 125, 50, 0)' }
   }
 };
-
 
 export default function Home({ isLoggedIn, setIsLoggedIn }) {
   const navigate = useNavigate();
@@ -128,9 +88,6 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
   });
 
   const [loading, setLoading] = useState(false); // 로딩 상태
-
-  // [NEW] 카테고리 스크롤 제어를 위한 Ref
-  const categoryScrollRef = useRef(null);
 
   // =================================================================
   // 2. 데이터 로드 함수 (핵심 로직 - 위치 기반 필터링 & API v.02.05 limit 적용)
@@ -176,9 +133,9 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
     // [B] Real 모드 (v.02.05 API 명세 반영)
     const queryParams = new URLSearchParams();
 
-    // ★ [UPDATE v.02.05] limit 파라미터 확정 반영
-    // 설명: v.02.05 명세서에서 리스트 조회 시 limit 파라미터가 공식 확정되었습니다.
-    // 기본값은 100개이며, 원활한 검색 결과를 위해 100개를 명시적으로 요청합니다.
+    // ★ [UPDATE v.02.05] limit 파라미터 확정 반영.
+    // 설명: v.02.05 명세서에서 리스트 조회 시 limit 파라미터가 공식 확정되었다.
+    // 기본값은 100개이며, 원활한 검색 결과를 위해 100개를 명시적으로 요청.
     queryParams.append('limit', 100);
 
     if (targetCategory) queryParams.append('category', targetCategory);
@@ -193,7 +150,7 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
 
     //  
     fetch(`${API_BASE_URL}/api/items?${queryParams.toString()}`, {
-      headers: { ...TUNNEL_HEADERS } // config.js에서 정의한 헤더를 그대로 가져옵니다.
+      headers: { ...TUNNEL_HEADERS } // config.js에서 정의한 헤더를 그대로 가져옴.
     })
       .then(res => res.json())
       .then(data => {
@@ -261,7 +218,7 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
     );
   };
 
-  // 카테고리 클릭 핸들러 (수정됨)
+  // 카테고리 클릭 핸들러 
   const handleCategoryClick = (selectedCategory) => {
     // 1. 이미 선택된 카테고리를 다시 눌렀다면? -> 해제 (빈 값)
     // 2. 새로운 카테고리라면? -> 해당 카테고리로 설정
@@ -269,17 +226,6 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
 
     setCategory(newCategory);
     fetchItems(newCategory, keyword, locationFilter);
-  };
-
-  // [NEW] 카테고리 좌우 스크롤 핸들러
-  const handleCategoryScroll = (direction) => {
-    if (categoryScrollRef.current) {
-      const scrollAmount = 300; // 한 번에 이동할 픽셀 수
-      categoryScrollRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth' // 부드럽게 이동
-      });
-    }
   };
 
   // 검색
@@ -291,62 +237,18 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
     if (e.key === 'Enter') handleSearch();
   };
 
+
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', overflowX: 'hidden' }}>
 
-      {/* --- 네비게이션 바 [✨ REPLACED] Ver. 2026.02.17 --- */}
+      {/* ---1.  네비게이션 바 [✨ REPLACED] Ver. 2026.02.17 --- */}
       <Navbar isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />
 
-      {/* --- 메인 배너 --- */}
-      <Box sx={{
-        position: 'relative',
-        width: '100vw', // 100% 대신 100vw를 사용하면 화면 끝까지 참.
-        left: '50%',
-        right: '50%',
-        marginLeft: '-50vw',
-        marginRight: '-50vw',
-        height: { xs: '350px', md: '480px' }, // 높이를 더 키워서 몰입감을 줌.
-        backgroundImage: `url(${MAIN_IMAGE_URL})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        // 그라데이션 오버레이 추가 (글자가 훨씬 잘 보임)
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          top: 0, left: 0, right: 0, bottom: 0,
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 100%)',
-          zIndex: 1
-        }
-      }}>
-        <Container maxWidth="md" sx={{ position: 'relative', zIndex: 2, textAlign: 'center', color: 'white' }}>
-          <Typography variant="h2"
-            sx={{
-              fontWeight: 900,
-              mb: 2,
-              color: '#ffffff', // 그라데이션 대신 단색 화이트
-              fontSize: { xs: '2.5rem', md: '3.5rem' },
-              letterSpacing: '-1px',
-              // 화이트일 때는 그림자가 있어야 글씨가 배경에서 튀어나와 보입니다.
-              textShadow: '2px 2px 20px rgba(0,0,0,0.5)'
-            }}>
-            모든 것을 빌려쓰는 세상
-          </Typography>
-          <Typography variant="h5" sx={{
-            opacity: 0.9,
-            fontWeight: 400,
-            mt: 3, // 서브 텍스트와 간격 벌림 (여백의 미)
-            letterSpacing: '0.5px',
-            fontSize: { xs: '1.1rem', md: '1.5rem' }
-          }}>
-            필요한 물건, 사지 말고 Re:Borrow 하세요.
-          </Typography>
-        </Container>
-      </Box>
 
-      {/* --- 🔍 컨트롤 타워 (검색, 필터, 뷰 모드) --- */}
+      {/* ---2.  메인 배너 컴포넌트  src/components/home/HeroSection.jsx  */}
+      <HeroSection />
+
+      {/* ---3.  🔍 컨트롤 타워 (검색, 필터, 뷰 모드) --- */}
       <Container sx={{
         mt: { xs: -3, md: -11 },
         mb: 4,
@@ -365,7 +267,24 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
                 onChange={(e) => setKeyword(e.target.value)}
                 onKeyPress={handleKeyPress}
                 InputProps={{
-                  startAdornment: <InputAdornment position="start"><SearchIcon color="action" /></InputAdornment>,
+                  // 왼쪽 검색 아이콘
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon color="action" />
+                    </InputAdornment>
+                  ),
+                  // [✨ 추가됨] 오른쪽 X 버튼 (글자가 있을 때만 보임)
+                  endAdornment: keyword && (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setKeyword('')} // 클릭 시 키워드 초기화
+                        edge="end"
+                        size="small"
+                      >
+                        <ClearIcon fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
                 }}
                 sx={{ bgcolor: 'white' }}
               />
@@ -397,109 +316,8 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
             {/* 2. 카테고리 & 뷰 모드 토글 (수정됨: 화살표 스크롤 추가) */}
             <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
 
-              {/* [NEW] 화살표가 포함된 카테고리 영역 */}
-              <Stack direction="row" alignItems="center" spacing={1} sx={{ flex: 1, overflow: 'hidden' }}>
-
-                {/* 왼쪽 이동 버튼 */}
-                <IconButton
-                  onClick={() => handleCategoryScroll('left')}
-                  size="small"
-                  sx={{
-                    border: '1px solid #eee',
-                    bgcolor: 'white',
-                    '&:hover': { bgcolor: '#f5f5f5' }
-                  }}
-                >
-                  <ArrowBackIosNewIcon fontSize="inherit" />
-                </IconButton>
-
-                {/* 카테고리 스크롤 영역 (기존 Chip을 들어내고 아래 내용으로 교체) 2026.02.09 수정 */}
-                <Box
-                  ref={categoryScrollRef}
-                  sx={{
-                    display: 'flex',
-                    gap: 3, // 아이콘들 사이의 넓은 간격
-                    overflowX: 'auto',
-                    whiteSpace: 'nowrap',
-                    px: 2,
-                    py: 1, // 위아래 여백을 줘서 호버 시 안 잘리게 함
-                    scrollBehavior: 'smooth',
-                    '&::-webkit-scrollbar': { display: 'none' }, // 스크롤바 숨김
-                    scrollbarWidth: 'none',
-                  }}
-                >
-                  {/* [전체] 버튼과 기존 [CATEGORIES] 배열을 하나로 합쳐서 반복문 돌림 */}
-                  {[{ label: '전체', value: '' }, ...CATEGORIES].map((cat) => {
-                    const isSelected = category === cat.value;
-                    const iconKey = cat.value === '' ? 'ALL' : cat.value; // 전체는 ALL, 나머지는 해당 value 매칭
-
-                    return (
-                      <Stack
-                        key={cat.value}
-                        alignItems="center"
-                        spacing={1}
-                        onClick={() => handleCategoryClick(cat.value)}
-                        sx={{
-                          cursor: 'pointer',
-                          minWidth: '70px', // 클릭 영역을 충분히 확보
-                        }}
-                      >
-                        {/* 아이콘을 감싸는 원형 배경 */}
-                        <Box
-                          sx={{
-                            width: 52,
-                            height: 52,
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            // 선택됐을 때 파란색, 아닐 때 아주 연한 회색
-                            backgroundColor: isSelected ? 'primary.main' : '#f5f5f5',
-                            // 선택됐을 때 아이콘은 흰색, 아닐 때 진한 회색
-                            color: isSelected ? 'white' : '#666',
-                            transition: 'all 0.3s ease',
-                            // 선택 시 그림자 효과로 입체감 부여
-                            boxShadow: isSelected ? '0 4px 12px rgba(25, 118, 210, 0.3)' : 'none',
-                            '&:hover': {
-                              backgroundColor: isSelected ? 'primary.dark' : '#eef2ff',
-                              transform: 'translateY(-4px)', // 위로 톡 튀어오르는 효과
-                            },
-                          }}
-                        >
-                          {/* 아이콘 크기 조절하여 삽입 */}
-                          {React.cloneElement(CATEGORY_ICONS[iconKey] || <MoreHorizIcon />, { sx: { fontSize: 26 } })}
-                        </Box>
-
-                        {/* 아래에 붙는 텍스트 라벨 */}
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            fontWeight: isSelected ? 'bold' : '500',
-                            color: isSelected ? 'primary.main' : '#555',
-                            fontSize: '0.75rem',
-                            transition: 'color 0.2s',
-                          }}
-                        >
-                          {cat.label}
-                        </Typography>
-                      </Stack>
-                    );
-                  })}
-                </Box>
-
-                {/* 오른쪽 이동 버튼 */}
-                <IconButton
-                  onClick={() => handleCategoryScroll('right')}
-                  size="small"
-                  sx={{
-                    border: '1px solid #eee',
-                    bgcolor: 'white',
-                    '&:hover': { bgcolor: '#f5f5f5' }
-                  }}
-                >
-                  <ArrowForwardIosIcon fontSize="inherit" />
-                </IconButton>
-              </Stack>
+              {/* ---✨ 카테고리 컴포넌트 교체  2026.02.18 */}
+              <CategoryBar category={category} onCategoryClick={handleCategoryClick} />
 
               {/* 리스트/지도 뷰 토글 버튼 */}
               <ToggleButtonGroup
@@ -522,7 +340,7 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
         </Paper>
       </Container>
 
-      {/* --- 📦 콘텐츠 영역 (리스트 or 지도) --- */}
+      {/* --- 4. 📦 콘텐츠 영역 (리스트 or 지도) --- */}
       <Container sx={{ py: 2, pb: 10, flex: 1 }}>
         <Box sx={{ mt: 0, mb: 4.5 }}>
           <Typography variant="h4" sx={{ fontWeight: '900', color: '#1a1a1a' }}>
@@ -622,7 +440,7 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
                 {items.map((item) => (
                   item.tradeLatitude && item.tradeLongitude && (
                     <MapMarker
-                      key={item.itemId}
+                      key={item.itemId || item.id}
                       position={{ lat: item.tradeLatitude, lng: item.tradeLongitude }}
                       onClick={() => navigate(`/items/${item.itemId}`)} // 마커 클릭 시 상세 페이지로
                       image={{
@@ -644,121 +462,19 @@ export default function Home({ isLoggedIn, setIsLoggedIn }) {
         )}
       </Container>
 
-      {/* --- ✨ 호스트 모집 배너 (CTA) --- */}
-      <Box sx={{
-        py: 10,
-        //  로그인 페이지의 하늘색 그라데이션 적용
-        background: 'linear-gradient(to right, #a1c4fd, #c2e9fb)',
-        //  밝은 배경에 맞춰 글자색을 진한 회색으로 변경 (가독성 확보)
-        color: '#333',
-        textAlign: 'center',
-        position: 'relative',
-        overflow: 'hidden'
-      }}>
-        {/* 배경 장식용 원 (디자인 디테일) */}
-        <Box sx={{ position: 'absolute', top: -50, left: -50, width: 200, height: 200, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.4)' }} />
-        <Box sx={{ position: 'absolute', bottom: -30, right: -30, width: 150, height: 150, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.4)' }} />
+      {/* ---5. 하단 배너들 컴포넌트화 */}
+      {/* src/components/home/HostBanner.jsx (호스트 모집) */}
+      {/* src/components/home/FeatureSection.jsx (서비스 소개) */}
 
-        <Container maxWidth="md" sx={{ position: 'relative', zIndex: 1 }}>
-          <Typography variant="h3" sx={{ fontWeight: '900', mb: 2 }}>
-            집에 잠들어 있는 물건이 있나요?
-          </Typography>
-          <Typography variant="h6" sx={{ opacity: 0.9, mb: 5, fontWeight: '400' }}>
-            Re:Borrow에서 근처 사람에게 빌려주고 부수입을 올려보세요.
-          </Typography>
-          <Button
-            variant="contained"
-            size="large"
-            sx={{
-              //  버튼은 배경과 대비되도록 진한 색상으로 변경
-              bgcolor: 'primary.main',
-              color: 'white',
-              fontWeight: 'bold',
-              px: 5, py: 1.5,
-              fontSize: '1.2rem',
-              boxShadow: '0 4px 15px rgba(25, 118, 210, 0.3)',
-              '&:hover': { bgcolor: 'primary.dark' }
-            }}
-            onClick={() => {
-              if (isLoggedIn) navigate('/products/new');
-              else navigate('/login');
-            }}
-          >
-            물건 등록하러 가기 🚀
-          </Button>
-        </Container>
+      <HostBanner isLoggedIn={isLoggedIn} />
+      <FeatureSection />
 
-        {/* 섹션 경계 허물기: "Wave Divider" */}
-        <Box sx={{
-          position: 'absolute', bottom: -1, left: 0, width: '100%',
-          overflow: 'hidden', lineHeight: 0, transform: 'rotate(180deg)', zIndex: 0
-        }}>
-          <svg viewBox="0 0 1200 120" preserveAspectRatio="none" style={{ width: '100%', height: '60px', display: 'block' }}>
-            <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z"
-              fill="#ffffff" />
-          </svg>
-        </Box>
-      </Box>
-
-
-      {/* --- ✨ 서비스 소개 (Trust Section) --- */}
-      <Box sx={{ py: 8, bgcolor: 'white', borderTop: '1px solid #eee' }}>
-        <Container maxWidth="lg">
-          <Typography variant="h4" sx={{
-            fontWeight: '900',
-            textAlign: 'center',
-            mb: 6,
-            // 👇 그라데이션 대신 깔끔하고 깊이 있는 차콜 컬러로 변경
-            color: '#1a1a1a',
-            letterSpacing: '-0.5px'
-          }}>
-            왜 Re:Borrow 인가요?
-          </Typography>
-          <Grid container spacing={4}>
-            {[
-              {
-                icon: <SecurityIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />,
-                title: '안전한 거래',
-                desc: '본인 인증된 사용자만 거래할 수 있어\n안심하고 물건을 빌려줄 수 있습니다.'
-              },
-              {
-                icon: <HandshakeIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />,
-                title: '합리적인 소비',
-                desc: '필요할 때만 빌려 쓰고,\n잠자는 물건으로 수익을 창출하세요.'
-              },
-              {
-                icon: <SentimentSatisfiedAltIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />,
-                title: '쉬운 이웃 거래',
-                desc: '내 주변 5km 이내의 이웃과\n직거래로 배송비 없이 이용하세요.'
-              }
-            ].map((feature, idx) => (
-              <Grid key={idx} size={{ xs: 12, md: 4 }} sx={{ textAlign: 'center' }}>
-                <Box sx={{
-                  p: 4,
-                  height: '100%',
-                  borderRadius: 4,
-                  bgcolor: '#f9f9f9',
-                  transition: 'transform 0.3s',
-                  '&:hover': { transform: 'translateY(-10px)', boxShadow: '0 10px 20px rgba(0,0,0,0.05)' }
-                }}>
-                  {feature.icon}
-                  <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2 }}>{feature.title}</Typography>
-                  <Typography variant="body1" color="text.secondary" sx={{ whiteSpace: 'pre-line', lineHeight: 1.6 }}>
-                    {feature.desc}
-                  </Typography>
-                </Box>
-              </Grid>
-            ))}
-          </Grid>
-        </Container>
-      </Box>
-
-      {/* --- 푸터 --- */}
+      {/* ---6. 푸터 --- */}
       <Box component="footer" sx={{ py: 3, mt: 'auto', bgcolor: '#f1f1f1', textAlign: 'center' }}>
         <Typography variant="body2" color="text.secondary">© 2026 Re:Borrow</Typography>
       </Box>
 
-      {/* --- 글쓰기 버튼 --- */}
+      {/* ---7. 글쓰기 버튼 --- */}
       {isLoggedIn && (
         <Fab
           color="primary"

@@ -3,9 +3,10 @@ import { useForm } from 'react-hook-form';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   TextField, Checkbox, Button, FormControlLabel, Link, Stack,
-  Typography, Avatar, Box, Container, Paper
+  Typography, Avatar, Box, Container, Paper, IconButton
 } from '@mui/material';
 import LockOutlineIcon from '@mui/icons-material/LockOutline';
+import CloseIcon from '@mui/icons-material/Close'; // [추가] 닫기 아이콘
 
 
 // ✅ Config에서 API_BASE_URL도 가져와야 통신이 된다.
@@ -137,6 +138,7 @@ export default function Login({ setIsLoggedIn }) {
           component={Paper}
           elevation={10}
           sx={{
+            position: 'relative',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -145,6 +147,14 @@ export default function Login({ setIsLoggedIn }) {
             borderRadius: 3,
           }}
         >
+          {/* [추가] 우측 상단 닫기(X) 버튼 */}
+          <IconButton
+            onClick={() => navigate('/')}
+            sx={{ position: 'absolute', top: 8, right: 8, color: 'text.secondary' }}
+          >
+            <CloseIcon />
+          </IconButton>
+
           <Avatar sx={{ m: 1, bgcolor: 'primary.main' }}>
             <LockOutlineIcon />
           </Avatar>
@@ -165,7 +175,7 @@ export default function Login({ setIsLoggedIn }) {
               margin='normal'
               required
               fullWidth
-              label="Email Address"
+              label="이메일 주소"
               autoComplete="email"
               autoFocus
               {...register("email", { required: "이메일을 입력해주세요." })}
@@ -177,7 +187,7 @@ export default function Login({ setIsLoggedIn }) {
               margin='normal'
               required
               fullWidth
-              label="Password"
+              label="비밀번호"
               type="password"
               autoComplete="current-password"
               {...register("password", { required: "비밀번호를 입력해주세요." })}
@@ -187,7 +197,7 @@ export default function Login({ setIsLoggedIn }) {
 
             <FormControlLabel
               control={<Checkbox value="remember" color="primary" />}
-              label="Remember me"
+              label="아이디 저장"
               sx={{ width: '100%' }}
             />
 
@@ -202,10 +212,10 @@ export default function Login({ setIsLoggedIn }) {
 
             <Stack direction="row" spacing={2} sx={{ mt: 1, justifyContent: 'center' }}>
               <Link variant="body2" sx={{ cursor: 'pointer' }}>
-                Forgot your password?
+                비밀번호를 잊으셨나요?
               </Link>
               <Link component={RouterLink} to="/signup" variant="body2" sx={{ cursor: 'pointer' }}>
-                sign up
+                회원가입
               </Link>
             </Stack>
           </Box>

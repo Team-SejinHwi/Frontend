@@ -2,6 +2,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Button, Stack } from '@mui/material';
+import AllInclusiveIcon from '@mui/icons-material/AllInclusive';
 
 export default function Navbar({ isLoggedIn, setIsLoggedIn }) {
     const navigate = useNavigate();
@@ -30,13 +31,54 @@ export default function Navbar({ isLoggedIn, setIsLoggedIn }) {
             }}
         >
             <Toolbar sx={{ justifyContent: 'space-between' }}>
-                <Typography
-                    variant="h6"
-                    sx={{ fontWeight: 'bold', cursor: 'pointer', color: '#333' }}
+                <Stack
+                    direction="row"
+                    alignItems="center"
+                    spacing={0.5}
                     onClick={() => navigate('/')}
+                    sx={{ cursor: 'pointer' }}
                 >
-                    Re:Borrow
-                </Typography>
+                    {/* 1. 심볼 아이콘 (그라데이션 적용) */}
+                    <AllInclusiveIcon
+                        sx={{
+                            fontSize: 32,
+                            background: 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            // 아이콘 자체 색상이 필요하면 아래처럼
+                            // color: '#1976d2' 
+                        }}
+                    />
+
+                    {/* 2. 텍스트 로고 (폰트 굵기 대비 & 그라데이션) */}
+                    <Typography
+                        variant="h5"
+                        noWrap
+                        component="div"
+                        sx={{
+                            fontWeight: 900, // 아주 굵게
+                            letterSpacing: '-0.5px', // 자간을 좁혀서 단단한 느낌
+                            background: 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)', // 브랜드 블루 그라데이션
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                        }}
+                    >
+                        Re:
+                        <Typography
+                            component="span"
+                            variant="h5"
+                            sx={{
+                                fontWeight: 300, // Borrow는 얇게 처리하여 세련미 강조
+                                color: '#333' // 뒷부분은 검은색(또는 그레이)으로 차분하게
+                                // 만약 전체 그라데이션을 원하면 이 span을 제거하고 Re:Borrow를 통으로 쓰세요.
+                            }}
+                        >
+                            Borrow
+                        </Typography>
+                    </Typography>
+                </Stack>
 
                 {isLoggedIn ? (
                     <Stack direction="row" spacing={1} alignItems="center">
