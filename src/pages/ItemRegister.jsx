@@ -201,7 +201,6 @@ export default function ItemRegister({ isLoggedIn }) {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          ...TUNNEL_HEADERS
           // multipart/form-data는 브라우저가 자동으로 설정하므로 직접 적지 않습니다.
         },
         body: formData,
