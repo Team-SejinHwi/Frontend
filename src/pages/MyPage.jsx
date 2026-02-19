@@ -123,7 +123,6 @@ export default function MyPage({ isLoggedIn = true, setIsLoggedIn }) {
             const response = await fetch(`${API_BASE_URL}/api/members/me`, {
                 method: 'PUT',
                 headers: {
-                    'Content-Type': 'application/json',
                     ...TUNNEL_HEADERS,
                     'Authorization': `Bearer ${token}`
                 },
@@ -159,7 +158,7 @@ export default function MyPage({ isLoggedIn = true, setIsLoggedIn }) {
             const token = localStorage.getItem('accessToken');
             const response = await fetch(`${API_BASE_URL}/api/members/password`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                headers: { ...TUNNEL_HEADERS, 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ currentPassword, newPassword })
             });
 

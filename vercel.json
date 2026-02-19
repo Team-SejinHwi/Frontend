@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "http://placeholder-url-waiting-for-backend/api/:path*" 
+    },
+    {
+      "source": "/images/:path*",
+      "destination": "http://placeholder-url-waiting-for-backend/images/:path*"
+    },
+    {
+      "source": "/ws-stomp/:path*",
+      "destination": "http://placeholder-url-waiting-for-backend/ws-stomp/:path*"
+    }
+  ]
+}

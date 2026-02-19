@@ -43,7 +43,6 @@ export default function Login({ setIsLoggedIn }) {
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           ...TUNNEL_HEADERS
         },
         body: JSON.stringify(data),

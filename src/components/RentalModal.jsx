@@ -126,7 +126,6 @@ const RentalModal = ({ open, onClose, item, onRentalSuccess }) => {
       const response = await fetch(`${API_BASE_URL}/api/rentals`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
           ...TUNNEL_HEADERS,
         },

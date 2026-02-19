@@ -55,7 +55,6 @@ export default function ReviewModal({ open, onClose, rentalId, onSuccess }) {
       const response = await fetch(`${API_BASE_URL}/api/reviews`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`, // 인증 토큰 필수
           ...TUNNEL_HEADERS
         },

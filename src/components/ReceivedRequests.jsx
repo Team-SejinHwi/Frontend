@@ -95,7 +95,6 @@ export default function ReceivedRequests() {
       const response = await fetch(`${API_BASE_URL}/api/rentals/${rentalId}/decision`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
           ...TUNNEL_HEADERS
         },
@@ -140,7 +139,6 @@ export default function ReceivedRequests() {
       const response = await fetch(`${API_BASE_URL}/api/rentals/${selectedRentalId}/decision`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
           ...TUNNEL_HEADERS
         },

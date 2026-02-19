@@ -64,7 +64,6 @@ export default function PaymentSuccess() {
                 const response = await fetch(`${API_BASE_URL}/api/payments/confirm`, {
                     method: "POST",
                     headers: {
-                        "Content-Type": "application/json",
                         "Authorization": `Bearer ${token}`,
                         ...TUNNEL_HEADERS
                     },

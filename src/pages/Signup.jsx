@@ -47,8 +47,7 @@ export default function Signup() {
       const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
         method: 'POST', // 데이터를 생성(Create)하므로 POST 메서드 사용
         headers: {
-          'Content-Type': 'application/json', // JSON 형식으로 보냄을 명시
-          ...TUNNEL_HEADERS //
+          ...TUNNEL_HEADERS 
         },
         body: JSON.stringify(submitData), // 자바스크립트 객체를 JSON 문자열로 변환하여 전송
       });

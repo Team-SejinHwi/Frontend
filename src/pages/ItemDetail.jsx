@@ -77,7 +77,6 @@ export default function ItemDetail() {
 
         const reqHeaders = {
           ...TUNNEL_HEADERS, // 👈 config.js에서 가져온 localtunnel 헤더를 합쳐줍니다
-          "Content-Type": "application/json",
         };
 
         if (token) {
@@ -157,7 +156,6 @@ export default function ItemDetail() {
       const response = await fetch(`${API_BASE_URL}/api/items/${id}`, {
         method: 'DELETE',
         headers: {
-
           'Authorization': `Bearer ${token}`,
           ...TUNNEL_HEADERS,
         },
@@ -216,7 +214,6 @@ export default function ItemDetail() {
       const response = await fetch(`${API_BASE_URL}/api/chat/room`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
           ...TUNNEL_HEADERS
         },
