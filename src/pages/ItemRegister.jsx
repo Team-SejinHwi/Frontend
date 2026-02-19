@@ -21,7 +21,7 @@ import ClearIcon from '@mui/icons-material/Clear';
 
 // 설정 및 데이터 import
 import { CATEGORIES } from '../constants/categories';
-import { API_BASE_URL, IS_MOCK_MODE, TUNNEL_HEADERS } from '../config';
+import { API_BASE_URL, IS_MOCK_MODE } from '../config';
 
 export default function ItemRegister({ isLoggedIn }) {
   const navigate = useNavigate();
