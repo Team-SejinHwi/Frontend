@@ -223,7 +223,6 @@ export default function ItemEdit() {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
-          ...TUNNEL_HEADERS
           // Content-Type은 설정하지 마세요 (브라우저가 자동으로 multipart/form-data 설정)
         },
         body: formData,
